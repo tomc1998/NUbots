@@ -48,7 +48,7 @@ node nubotsvmbuild {
 
   # List all of the archives that need to be downloaded along with any other associated parameters (creates, requires, etc).
   $archives = {
-    'protobuf'     => {'url'         => 'https://github.com/google/protobuf/releases/download/v3.0.2/protobuf-python-3.0.2.tar.gz',
+    'protobuf'     => {'url'         => 'https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz',
                        'args'        => { 'native'   => [ '--with-zlib', '--with-protoc=PROTOC_PATH', ],
                                           'DarwinOp' => [ '--host=i686-linux-gnu', '--build=x86_64-unknown-linux-gnu', '--with-zlib', '--with-protoc=PROTOC_PATH', ],
                                           'NimbroOp' => [ '--with-zlib', '--with-protoc=PROTOC_PATH', ], },
@@ -143,17 +143,13 @@ node nubotsvmbuild {
                        'prebuild'    => 'cp portaudio19.h portaudio.h',
                        'method'      => 'make',
                        'require'     => [ Installer['portaudio'], ],},
-    'raw1394'      => {'url'         => 'http://downloads.sourceforge.net/project/libraw1394/libraw1394/libraw1394-2.0.5.tar.gz',
-                       'args'        => { 'native'   => [ '', ],
-                                          'DarwinOp' => [ '', ],
-                                          'NimbroOp' => [ '', ], },
-                       'method'      => 'autotools',},
-    'dc1394'       => {'url'         => 'http://downloads.sourceforge.net/project/libdc1394/libdc1394-2/2.2.4/libdc1394-2.2.4.tar.gz',
-                       'args'        => { 'native'   => [ '--disable-doxygen-doc', '--disable-examples', ],
-                                          'DarwinOp' => [ '--disable-doxygen-doc', '--disable-examples', ],
-                                          'NimbroOp' => [ '--disable-doxygen-doc', '--disable-examples', ], },
-                       'method'      => 'autotools',
-                       'require'     => [ Installer['raw1394'], ],},
+    'pybind11'     => {'url'         => 'https://github.com/pybind/pybind11/archive/v2.0.1.tar.gz',
+                       'args'        => { 'native'   => [ '-DPYBIND11_TEST=OFF', '-DPYTHON_EXECUTABLE=PREFIX/Python/bin/python' ],
+                                          'DarwinOp' => [ '-DPYBIND11_TEST=OFF', '-DPYTHON_EXECUTABLE=PREFIX/Python/bin/python' ],
+                                          'NimbroOp' => [ '-DPYBIND11_TEST=OFF', '-DPYTHON_EXECUTABLE=PREFIX/Python/bin/python' ], },
+                       'creates'     => 'lib/libpybind11.so',
+                       'require'     => [ Installer['eigen3'], Exec['Anaconda_native_Files'], Exec['Anaconda_NimbroOp_Files'], Exec['Anaconda_DarwinOp_Files'], ],
+                       'method'      => 'cmake',},
     'fswatch'      => {'url'         => 'https://github.com/emcrisostomo/fswatch/archive/1.9.3.tar.gz',
                        'args'        => { 'native'   => [ '', ],
                                           'DarwinOp' => [ '--host=i686-linux-gnu', '--build=x86_64-unknown-linux-gnu', ],
@@ -237,7 +233,7 @@ node nubotsvmbuild {
     }
   }
 
-  archive { "Spinnaker_amd64":
+  archive { "Spinnaker_NimbroOp":
     url              => "http://nubots.net/tarballs/spinnaker_1_0_0_295_amd64.tar.gz",
     target           => "/nubots/toolchain/NimbroOp/src/Spinnaker",
     src_target       => "/nubots/toolchain/NimbroOp/src",
@@ -250,7 +246,20 @@ node nubotsvmbuild {
     root_dir         => '.',
     require          => [ Class['installer::prerequisites'], Class['dev_tools'], ],
   }
-  archive { "Spinnaker_i386":
+  archive { "Spinnaker_native":
+    url              => "http://nubots.net/tarballs/spinnaker_1_0_0_295_amd64.tar.gz",
+    target           => "/nubots/toolchain/native/src/Spinnaker",
+    src_target       => "/nubots/toolchain/native/src",
+    purge_target     => true,
+    checksum         => false,
+    follow_redirects => true,
+    timeout          => 0,
+    extension        => "tar.gz",
+    strip_components => 1,
+    root_dir         => '.',
+    require          => [ Class['installer::prerequisites'], Class['dev_tools'], ],
+  }
+  archive { "Spinnaker_DarwinOp":
     url              => "http://nubots.net/tarballs/spinnaker_1_0_0_295_i386.tar.gz",
     target           => "/nubots/toolchain/DarwinOp/src/Spinnaker",
     src_target       => "/nubots/toolchain/DarwinOp/src",
@@ -263,7 +272,7 @@ node nubotsvmbuild {
     root_dir         => '.',
     require          => [ Class['installer::prerequisites'], Class['dev_tools'], ],
   }
-  exec { "Spinnaker_amd64_Files":
+  exec { "Spinnaker_NimbroOp_Files":
     creates  => "/nubots/toolchain/NimbroOp/include/Spinnaker.h",
     command  => "cd include && cp -r ./* /nubots/toolchain/NimbroOp/include/ && cd .. &&
                  cd lib &&
@@ -281,10 +290,31 @@ node nubotsvmbuild {
                    '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
     timeout  => 0,
     provider => 'shell',
-    require  => [ Archive["Spinnaker_amd64"], ],
+    require  => [ Archive["Spinnaker_NimbroOp"], ],
     before   => Class['toolchain_deb'],
   }
-  exec { "Spinnaker_i386_Files":
+  exec { "Spinnaker_native_Files":
+    creates  => "/nubots/toolchain/native/include/Spinnaker.h",
+    command  => "cd include && cp -r ./* /nubots/toolchain/native/include/ && cd .. &&
+                 cd lib &&
+                 cp libGCBase_gcc540_v3_0.so* /nubots/toolchain/native/lib/ &&
+                 cp libGenApi_gcc540_v3_0.so* /nubots/toolchain/native/lib/ &&
+                 cp libLog_gcc540_v3_0.so* /nubots/toolchain/native/lib/ &&
+                 cp libMathParser_gcc540_v3_0.so* /nubots/toolchain/native/lib/ &&
+                 cp libNodeMapData_gcc540_v3_0.so* /nubots/toolchain/native/lib/ &&
+                 cp libptgreyvideoencoder.so* /nubots/toolchain/native/lib/ &&
+                 cp libSpinnaker.so* /nubots/toolchain/native/lib/ &&
+                 cp libXmlParser_gcc540_v3_0.so* /nubots/toolchain/native/lib/ &&
+                 cd ..",
+    cwd      => "/nubots/toolchain/native/src/Spinnaker",
+    path     =>  [ "/nubots/toolchain/native/bin", "/nubots/toolchain/bin",
+                   '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
+    timeout  => 0,
+    provider => 'shell',
+    require  => [ Archive["Spinnaker_native"], ],
+    before   => Class['toolchain_deb'],
+  }
+  exec { "Spinnaker_DarwinOp_Files":
     creates  => "/nubots/toolchain/NimbroOp/include/Spinnaker.h",
     command  => "cd include && cp -r ./* /nubots/toolchain/NimbroOp/include/ && cd .. &&
                  cd lib &&
@@ -302,8 +332,75 @@ node nubotsvmbuild {
                    '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
     timeout  => 0,
     provider => 'shell',
-    require  => [ Archive["Spinnaker_i386"], ],
+    require  => [ Archive["Spinnaker_DarwinOp"], ],
     before   => Class['toolchain_deb'],
+  }
+
+  exec { "Anaconda_DarwinOp_Files":
+    creates     => "/nubots/toolchain/DarwinOp/Python/bin/conda",
+    command     => "wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86.sh -O ./Miniconda3-latest-Linux-x86.sh &&
+                    chmod +x ./Miniconda3-latest-Linux-x86.sh &&
+                    ./Miniconda3-latest-Linux-x86.sh -bfp /nubots/toolchain/DarwinOp/Python &&
+                    conda install -y -c asmeurer readline=6.2.5 &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple pyparsing &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple pygments &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple termcolor &&
+                    pip install git+https://github.com/hajimes/mmh3.git &&
+                    pip install git+https://github.com/carlos-jenkins/pydotplus &&
+                    pip install protobuf &&
+                    pip install numpy",
+    environment => [ 'CFLAGS=-m32', 'CXXFLAGS=-m32', 'LDFLAGS=-m32', ],
+    cwd         => "/nubots/toolchain/DarwinOp/src",
+    path        =>  [ "/nubots/toolchain/DarwinOp/bin", "/nubots/toolchain/DarwinOp/Python/bin", "/nubots/toolchain/bin",
+                      '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
+    timeout     => 0,
+    provider    => 'shell',
+    require     => [ Class['installer::prerequisites'], Class['dev_tools'], ],
+    before      => Class['toolchain_deb'],
+  }
+
+  exec { "Anaconda_native_Files":
+    creates     => "/nubots/toolchain/native/Python/bin/conda",
+    command     => "wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ./Miniconda3-latest-Linux-x86_64.sh &&
+                    chmod +x ./Miniconda3-latest-Linux-x86_64.sh &&
+                    ./Miniconda3-latest-Linux-x86_64.sh -bfp /nubots/toolchain/native/Python &&
+                    conda install -y -c asmeurer readline=6.2.5 &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple pyparsing &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple pygments &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple termcolor &&
+                    pip install git+https://github.com/hajimes/mmh3.git &&
+                    pip install git+https://github.com/carlos-jenkins/pydotplus &&
+                    pip install protobuf &&
+                    pip install numpy",
+    cwd         => "/nubots/toolchain/native/src",
+    path        =>  [ "/nubots/toolchain/native/bin", "/nubots/toolchain/native/Python/bin", "/nubots/native/bin",
+                      '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
+    timeout     => 0,
+    provider    => 'shell',
+    require     => [ Class['installer::prerequisites'], Class['dev_tools'], ],
+    before      => Class['toolchain_deb'],
+  }
+
+  exec { "Anaconda_NimbroOp_Files":
+    creates     => "/nubots/toolchain/NimbroOp/Python/bin/conda",
+    command     => "wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ./Miniconda3-latest-Linux-x86_64.sh &&
+                    chmod +x ./Miniconda3-latest-Linux-x86_64.sh &&
+                    ./Miniconda3-latest-Linux-x86_64.sh -bfp /nubots/toolchain/NimbroOp/Python &&
+                    conda install -y -c asmeurer readline=6.2.5 &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple pyparsing &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple pygments &&
+                    pip install -i https://pypi.anaconda.org/pypi/simple termcolor &&
+                    pip install git+https://github.com/hajimes/mmh3.git &&
+                    pip install git+https://github.com/carlos-jenkins/pydotplus &&
+                    pip install protobuf &&
+                    pip install numpy",
+    cwd         => "/nubots/toolchain/NimbroOp/src",
+    path        =>  [ "/nubots/toolchain/NimbroOp/bin", "/nubots/toolchain/NimbroOp/Python/bin", "/nubots/toolchain/bin",
+                      '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
+    timeout     => 0,
+    provider    => 'shell',
+    require     => [ Class['installer::prerequisites'], Class['dev_tools'], ],
+    before      => Class['toolchain_deb'],
   }
 
   # After we have installed, create the CMake toolchain files and then build our deb.
@@ -340,6 +437,8 @@ set(CMAKE_C_FLAGS \"\${CMAKE_C_FLAGS} ${compile_params}\" CACHE STRING \"\" FORC
 set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} ${compile_params}\" CACHE STRING \"\" FORCE)
 
 set(PLATFORM \"${arch}\" CACHE STRING \"The platform to build for.\" FORCE)
+
+set(PYTHON_EXECUTABLE \"${prefix}/${arch}/Python/bin/python\" CACHE STRING \"Path to the python interpreter to use.\" FORCE)
 ",
       ensure  => present,
       path    => "${prefix}/${arch}.cmake",
