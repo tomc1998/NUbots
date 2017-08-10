@@ -46,6 +46,13 @@
 #include "utility/support/eigen_armadillo.h"
 #include "utility/support/yaml_armadillo.h"
 
+#include "BackgroundImageGen.h"
+#include "GoalMatcherConstants.h"
+#include "SurfDetection.h"
+#include "TestImageGen.h"
+#include "message/input/Image.h"
+#include "message/localisation/FieldObject.h"
+
 
 namespace module {
 namespace vision {
@@ -78,6 +85,7 @@ namespace vision {
     using SegmentClass = message::vision::ClassifiedImage::SegmentClass::Value;
     using message::vision::Goal;
     using message::support::FieldDescription;
+    using message::input::Image;
 
     // TODO the system is too generous with adding segments above and below the goals and makes them too tall, stop it
     // TODO the system needs to throw out the kinematics and height based measurements when it cannot be sure it saw the
@@ -140,7 +148,189 @@ namespace vision {
 
                 DEBUG_GOAL_THROWOUTS = config["debug_goal_throwouts"].as<bool>();
                 DEBUG_GOAL_RANSAC    = config["debug_goal_ransac"].as<bool>();
+
+                goalMatcher.loadVocab(VocabFileName);
+                printf("\n\n\n");
+                // goalMatcher.loadMap(MapFileName);
+                // myfile.open("/home/vagrant/NUbots/module/vision/GoalDetector/data/resultTable.txt");
+                // //,std::ios_base::app); This last bit adds text to end of file
+                myfile2.open("/home/vagrant/NUbots/module/vision/GoalDetector/data/CutoffTable.txt");
             });
+
+        on<Every<1, std::chrono::seconds>>().then([this] {
+
+            /* This is all stuff to make SurfDetection work in isolation. Will need to be deleted when integrated with
+             * GoalMatching.cpp */
+            int pixValIt                              = -1;
+            uint8_t Y                                 = 0;
+            int Yi                                    = 0;
+            NUClear::clock::time_point fake_timestamp = NUClear::clock::now();
+
+
+            if (imageNum == 1) {
+                myfile2 << ",,Cosine Score\n"
+                        << ",0.2,,0.3,,0.4,,0.5,,0.6,\n"
+                        << "Min Inlier,AWAY,HOME,AWAY,HOME,AWAY,HOME,AWAY,HOME,AWAY,HOME\n"
+                        << goalMatcher.getValidInliers() << ",";
+            }
+
+            if (imageNum <= 21) {
+                std::vector<uint8_t> test_image(IMAGE_HEIGHT * IMAGE_WIDTH * 2, 0);
+                std::unique_ptr<message::localisation::Self> self = std::make_unique<message::localisation::Self>();
+
+                arma::vec2 n({0.0, 1.0});
+                double d;
+
+                test_image = backgroundImageGen(imageNum, self, &d);
+                auto frame =
+                    std::make_unique<ClassifiedImage<ObjectClass>>();  // Create an empty ClassifiedImage object
+                frame->image = std::make_shared<const Image>(
+                    (uint) IMAGE_WIDTH, (uint) IMAGE_HEIGHT, fake_timestamp, std::move(test_image));
+                frame->horizon = Line(n, d);
+                printf("Producing background image #%d\n", imageNum);
+                imageNum++;
+                emit(std::move(self));
+                emit(std::move(frame));
+            }
+            else if (imageNum <= 54) {
+                goalMatcher.setWasInitial(false);
+                std::vector<uint8_t> test_image(IMAGE_HEIGHT * IMAGE_WIDTH * 2, 0);
+                std::unique_ptr<message::localisation::Self> self = std::make_unique<message::localisation::Self>();
+
+                arma::vec2 n({0.0, 1.0});
+                double d;
+
+                test_image = testImageGen(imageNum - 21, self, &d, awayImages);
+                auto frame =
+                    std::make_unique<ClassifiedImage<ObjectClass>>();  // Create an empty ClassifiedImage object
+                frame->image = std::make_shared<const Image>(
+                    (uint) IMAGE_WIDTH, (uint) IMAGE_HEIGHT, fake_timestamp, std::move(test_image));
+                frame->horizon = Line(n, d);
+                printf("Producing Test image #%d\n", imageNum - 21);
+                imageNum++;
+                emit(std::move(self));
+                emit(std::move(frame));
+            }
+            else if (imageNum == 55) {
+                printf("\t\tBest\n");
+                printf("Image\tMatch Scores\t AWAY/HOME\tInliers   Outliers\n");
+                printf("=====================================================================================\n");
+                for (int m = 0; m < 33; m++) {
+                    printf("#%2d\t\t\t", m + 1);
+                    for (int mi = 0; mi < 8; mi++) {
+                        if ((resultTable(m * 8 + mi, 1) < 0.1) && (resultTable(m * 8 + mi, 1) > -0.1)) {
+                            printf("----\t\t\t -\t\t   --\t\t--\n");
+                        }
+                        else {
+                            printf("%.2f\t\t\t%2.0f\t\t   %3.0f\t\t%3.0f\n",
+                                   resultTable(m * 8 + mi, 0),
+                                   resultTable(m * 8 + mi, 1),
+                                   resultTable(m * 8 + mi, 2),
+                                   resultTable(m * 8 + mi, 3));
+                        }
+                        if (mi < 7) printf("\t\t\t");
+                    }
+                    printf("--------------------------------------------------------------------------------------\n");
+                }
+
+
+                // ofstream myfile;
+                // myfile.open("/home/Desktop/resultTable.txt");
+                /*
+                myfile << ",Best,,,\n";
+                myfile << "Image,Match Scores,AWAY/HOME,Inliers,Outliers,Ratio,Correct\n";
+                for (int m = 0;m < 33;m++){
+                    myfile << "#" << m+1 << ",";
+                    for (int mi = 0;mi < 8;mi++) {
+                        if ((resultTable(m*8+mi,1) < 0.1) && (resultTable(m*8+mi,1) > -0.1)){
+                            myfile << "-,-,-,-,,\n";
+                        }
+                        else {
+                            myfile << resultTable(m*8+mi,0) << ",";
+                            if (resultTable(m*8+mi,1) > 0.5) myfile << "AWAY,";
+                            else myfile << "HOME,";
+                            myfile << resultTable(m*8+mi,2) << "," << resultTable(m*8+mi,3);
+                            if ((mi == 0) && ((resultTable(m*8+3,1) > 0.1) || (resultTable(m*8+3,1) < -0.1))){
+                                myfile << "," << resultTable(m*8,4) << "/" << resultTable(m*8,5) << ",";
+                                float awayGoalVotes = resultTable(m*8,4) - resultTable(m*8,5);
+                                if ((awayImages == 1)&&(awayGoalVotes < -1.9)) myfile << "WRONG\n"; // WRONG for AWAY
+                dataset
+                                else if ((awayImages == 1)&&(awayGoalVotes > 1.9)) myfile << "CORRECT\n";
+                                else if ((awayImages == 0)&&(awayGoalVotes < -1.9)) myfile << "CORRECT\n";
+                                else if ((awayImages == 0)&&(awayGoalVotes > 1.9)) myfile << "WRONG\n";
+                                else myfile << "-\n";
+                            }
+                            else myfile << ",,\n";
+                        }
+                        if (mi < 7) myfile << ",";
+                    }
+                }
+                //myfile.close();
+                */
+                /******* CORRECT/WRONG COUNTER **********/
+                int correctCount = 0;
+                int wrongCount   = 0;
+                for (int m = 0; m < 33; m++) {
+                    float awayGoalVotes = resultTable(m * 8, 4) - resultTable(m * 8, 5);
+                    printf("%.3f\n", awayGoalVotes);
+                    if ((resultTable(m * 8, 4) > 1.99)
+                        || (resultTable(m * 8, 5) > 1.99)) {  // Checks if enough matches are available
+                        if (((awayImages == 1) && (awayGoalVotes > 1.99))
+                            || ((awayImages == 0) && (awayGoalVotes < -1.99))) {
+                            correctCount++;
+                        }
+                        else if (((awayImages == 1) && (awayGoalVotes < -1.99))
+                                 || ((awayImages == 0) && (awayGoalVotes > 1.99))) {
+                            wrongCount++;
+                        }
+                    }
+                }
+
+                printf("\nCorrect Count = %d", correctCount);
+                int CorrectPercent = (int) (correctCount / imageSetSize * 100 + 0.5);
+                int WrongPercent   = (int) (wrongCount / imageSetSize * 100 + 0.5);
+                int UnsurePercent  = (int) ((imageSetSize - correctCount - wrongCount) / imageSetSize * 100 + 0.5);
+                printf(" (%d)\n\n", CorrectPercent);
+                // myfile << correctCount;
+                myfile2 << CorrectPercent << "/" << WrongPercent << "/" << UnsurePercent;
+                if (CutoffTableColCounter < (CutoffTableColMax - 1)) {  // Not yet the end of a row
+                    myfile2 << ",";
+                    CutoffTableColCounter++;
+                    imageNum = 22;          // Reset imageNum
+                    if (awayImages == 0) {  // Transition to next cosine cutoff
+                        awayImages = 1;     // Toggling awayImages
+                        goalMatcher.setValidCosineScore(goalMatcher.getValidCosineScore()
+                                                        + 0.1);  // Increasing Valid Cosine Score by 0.1
+                        printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
+                    }
+                    else {
+                        awayImages = 0;
+                        printf("ValidCosineScore stays at: %.2f\n", goalMatcher.getValidCosineScore());
+                    }
+                }
+                else if (CutoffTableRowCounter < (CutoffTableRowMax - 1)) {  // End of row, but not of table
+                    imageNum              = 22;
+                    CutoffTableColCounter = 0;
+                    CutoffTableRowCounter++;
+                    goalMatcher.setValidInliers(goalMatcher.getValidInliers() + 10);
+                    goalMatcher.setValidCosineScore(0.2);
+                    myfile2 << endl << goalMatcher.getValidInliers() << ",";
+                    awayImages = 1;
+                    printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
+                }
+                else {  // End of row and table
+                    imageNum++;
+                }
+                resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);
+            }
+            else if (imageNum == 56) {
+                printf("\nFINISHED...PRESS CTRL + C\n");
+                imageNum++;
+                // myfile.close();
+                myfile2.close();
+            }
+        });
+
 
         on<Trigger<ClassifiedImage>, With<CameraParameters>, With<LookUpTable>, With<FieldDescription>, Single>().then(
             "Goal Detector",
@@ -639,6 +829,60 @@ namespace vision {
                     }
                 }
 
+                Image::Pixel tempPixel;
+                uint w, h;
+                w                 = rawImage->image->width;
+                h                 = rawImage->image->height;
+                int right_horizon = rawImage->horizon.y(w - 1);
+                // printf("%dx%d\n\n",h,w);
+                /*
+                for (uint m = 0;m<h ;++m){
+                    for (uint n = 0;n<w;++n){
+                        tempPixel = (*rawImage->image)(n,m);
+                        printf("%3d ",tempPixel.y);
+                    }
+                    if (m == right_horizon){
+                        printf("--");
+                    }
+                    printf("\n");
+                }
+                printf("\n");
+                */
+                /********************************************************************
+                 * SURF Landmark Extraction - needs Robot Detection                *
+                 *******************************************************************/
+                SurfDetection surf_obj(rawImage);
+                surf_obj.loadVocab(VocabFileName);
+                surf_obj.findLandmarks(landmarks, landmark_tf, landmark_pixLoc);
+
+                /********************************************************************
+                 * SURF Landmarks used to classify the goal area                   *
+                 *******************************************************************/
+
+                float awayGoalProb = 0.5;
+                if (imageNum <= 22) {
+                    goalMatcher.process(rawImage,
+                                        landmarks,
+                                        landmark_tf,
+                                        landmark_pixLoc,
+                                        self,
+                                        awayGoalProb,
+                                        MapFileName,
+                                        &resultTable);
+                }
+                else {
+                    printf("resultTable(%d:%d,:)\n", (imageNum - 23) * 8, (imageNum - 23) * 8 + 7);
+                    Eigen::MatrixXd temp = resultTable.middleRows((imageNum - 23) * 8, 8);
+                    goalMatcher.process(
+                        rawImage, landmarks, landmark_tf, landmark_pixLoc, selfblah, awayGoalProb, MapFileName, &temp);
+                    resultTable.middleRows((imageNum - 23) * 8, 8) = temp;
+                }
+                printf("awayGoalProb = %.2f\n", awayGoalProb);
+                printf("imageNum = %d\n", imageNum);
+                printf("goal size = %d\n\n\n", goals->size());
+                for (int j = 0; j < goals->size(); j++) {
+                    goals->at(j).awayGoalProb = awayGoalProb;
+                }
                 emit(std::move(goals));
 
             });

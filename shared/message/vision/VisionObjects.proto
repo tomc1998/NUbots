@@ -100,12 +100,13 @@ message Goal {
         mat22           normAngCov   = 5;
     }
 
-    VisionObject         visObject   = 1;
-    Side                 side        = 2;
-    Team                 team        = 3;
-    Frustum              frustum     = 4;
-    Quad                 quad        = 5;
-    repeated Measurement measurement = 6;
+    VisionObject         visObject    = 1;
+    Side                 side         = 2;
+    Team                 team         = 3;
+    Frustum              frustum      = 4;
+    Quad                 quad         = 5;
+    repeated Measurement measurement  = 6;
+    float                awayGoalProb = 7;
 }
 
 message Obstacle {

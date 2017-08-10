@@ -20,8 +20,15 @@
 #ifndef MODULES_VISION_GOALDETECTOR_H
 #define MODULES_VISION_GOALDETECTOR_H
 
+#include <stdio.h>
+#include <string.h>
 #include <armadillo>
+#include <eigen3/Eigen/Dense>
+#include <fstream>
+#include <iostream>
 #include <nuclear>
+#include "GoalMatcher.h"
+#include "Ipoint.h"
 
 namespace module {
 namespace vision {
@@ -54,6 +61,30 @@ namespace vision {
 
         bool DEBUG_GOAL_THROWOUTS;
         bool DEBUG_GOAL_RANSAC;
+
+        std::unique_ptr<std::vector<Ipoint>> landmarks;
+        std::unique_ptr<Eigen::VectorXf> landmark_tf =
+            std::make_unique<Eigen::VectorXf>();  // term frequency of landmarks
+        std::unique_ptr<std::vector<std::vector<float>>> landmark_pixLoc =
+            std::make_unique<std::vector<std::vector<float>>>();  // the pixel locations of terms in landmark_tf
+        bool wasInitial;
+        int awayMapSize;
+        int homeMapSize;
+        bool clearMap             = false;
+        std::string VocabFileName = "/home/vagrant/NUbots/module/vision/GoalDetector/data/words.vocab";
+        std::string MapFileName   = "/home/vagrant/NUbots/module/vision/GoalDetector/data/goals.map";
+        GoalMatcher goalMatcher;
+        uint8_t imageNum            = 1;
+        Eigen::MatrixXd resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);
+        int awayImages              = 1;  // 1 = AWAY, 0 = HOME
+
+        int CutoffTableRowCounter = 0;
+        int CutoffTableColCounter = 0;
+        int CutoffTableColMax     = 10;  // Double the number due to away and home in each column
+        int CutoffTableRowMax     = 6;
+        float imageSetSize        = 33.0;  // float because this number is the denominator in divisions
+        std::ofstream myfile;
+        std::ofstream myfile2;
 
     public:
         /// @brief Called by the powerplant to build and setup the GoalDetector reactor.
