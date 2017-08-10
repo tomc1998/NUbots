@@ -11,7 +11,7 @@
 #include "Ipoint.h"
 #include "Tfidf.h"
 #include "message/input/Image.h"
-#include "message/localisation/FieldObject.h"
+#include "message/localisation/Field.h"
 #include "message/vision/ClassifiedImage.h"
 #include "message/vision/VisionObjects.h"
 #define SEARCH_POSITIONS 8    // how many of the top responses to look at
@@ -35,11 +35,11 @@ public:
 
     // Tries to classify which end the visible goals are at, based on background landmarks, or learns
     // landmarks if in first ready state for the half
-    void process(std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame,
+    void process(std::shared_ptr<const message::vision::ClassifiedImage> frame,
                  std::unique_ptr<std::vector<Ipoint>>& landmarks,
                  std::unique_ptr<Eigen::VectorXf>& landmark_tf,
                  std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
-                 const message::localisation::Self& self,
+                 const message::localisation::Field& field,
                  float& awayGoalProb,
                  std::string mapFile,
                  Eigen::MatrixXd* resultTable);
@@ -54,7 +54,7 @@ public:
 
 private:
     // Tries to classify which field end we are facing, based on background landmarks, returns the number of matches
-    int classifyGoalArea(std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame,
+    int classifyGoalArea(std::shared_ptr<const message::vision::ClassifiedImage> frame,
                          std::unique_ptr<std::vector<Ipoint>>& landmarks,
                          std::unique_ptr<Eigen::VectorXf>& landmark_tf,
                          std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,

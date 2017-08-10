@@ -1,7 +1,7 @@
 #include <math.h>
 #include <eigen3/Eigen/Core>
 #include "GoalMatcherConstants.h"
-#include "message/localisation/FieldObject.h"
+#include "message/localisation/Field.h"
 
 struct AbsCoord {
 

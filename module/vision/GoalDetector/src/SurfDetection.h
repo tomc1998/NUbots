@@ -15,7 +15,7 @@ namespace vision {
 
     class SurfDetection {
     public:
-        SurfDetection(std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame_2);
+        SurfDetection(std::shared_ptr<const message::vision::ClassifiedImage> frame_2);
 
         // find interest points
         void findLandmarks(std::unique_ptr<std::vector<Ipoint>>& landmarks_out,
@@ -63,7 +63,7 @@ namespace vision {
         std::unique_ptr<std::vector<Ipoint>> landmarks = std::make_unique<std::vector<Ipoint>>();
 
         // the Classified image structure
-        std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame_p;
+        std::shared_ptr<const message::vision::ClassifiedImage> frame_p;
 
         // the integral horizon image
         std::unique_ptr<std::vector<float>> int_img =

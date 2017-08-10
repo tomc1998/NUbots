@@ -45,13 +45,12 @@ void GoalMatcher::setValidInliers(int x) {
     tfidf.setValidInliers(x);
 }
 
-int GoalMatcher::classifyGoalArea(
-    std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame,
-    std::unique_ptr<std::vector<Ipoint>>& landmarks,
-    std::unique_ptr<Eigen::VectorXf>& landmark_tf,
-    std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
-    message::vision::Goal::Team& type,
-    Eigen::MatrixXd* resultTable) {
+int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::ClassifiedImage> frame,
+                                  std::unique_ptr<std::vector<Ipoint>>& landmarks,
+                                  std::unique_ptr<Eigen::VectorXf>& landmark_tf,
+                                  std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
+                                  message::vision::Goal::Team& type,
+                                  Eigen::MatrixXd* resultTable) {
 
     // if ((!vocabLoaded) || (!frame.wordMapped)) return 0; // Check valid data
 
@@ -115,17 +114,17 @@ int GoalMatcher::classifyGoalArea(
 }
 
 
-void GoalMatcher::process(std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame,
+void GoalMatcher::process(std::shared_ptr<const message::vision::ClassifiedImage> frame,
                           std::unique_ptr<std::vector<Ipoint>>& landmarks,
                           std::unique_ptr<Eigen::VectorXf>& landmark_tf,
                           std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
-                          const message::localisation::Self& self,
+                          const message::localisation::Field& field,
                           float& awayGoalProb,
                           std::string mapFile,
                           Eigen::MatrixXd* resultTable) {
 
     // Adjust robotPos for head yaw
-    AbsCoord position(self.position(0), self.position(1), atan2(self.heading[1], self.heading[0]));
+    AbsCoord position = field;
     printf("Robot is in position: <%0.1f,%0.1f,%0.1f>\n", position.x(), position.y(), position.theta());
     /*
     if (isnan(position.x()) || isnan(position.y()) || isnan(position.theta())){
@@ -164,8 +163,8 @@ void GoalMatcher::process(std::shared_ptr<const message::vision::ClassifiedImage
         // printf("This appears to be a unique perspective of the goal\n");
         // Check which goal we are mapping
         bool awayGoal = false;
-        if (self.heading[0]
-            > 0) {  // This only works if heading is w.r.t. the field and the x-axis is towards the opponent's goal.
+        // This only works if heading is w.r.t. the field and the x-axis is towards the opponent's goal.
+        if (std::abs(field.position[2]) < M_PI * 0.5) {
             awayGoal = true;
             printf("We are looking at the OPPONENT goal\n");
         }

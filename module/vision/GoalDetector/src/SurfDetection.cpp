@@ -1,7 +1,7 @@
 
 #include "SurfDetection.h"
 
-#include "Fasthessian.h"
+#include "FastHessian.h"
 #include "Integral.h"
 #include "Ipoint.h"
 
@@ -19,9 +19,7 @@ namespace vision {
     using message::vision::ObjectClass;
     using utility::math::geometry::Line;
 
-    SurfDetection::SurfDetection(
-        std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame_2)
-        : frame_p(frame_2) {}
+    SurfDetection::SurfDetection(std::shared_ptr<const message::vision::ClassifiedImage> frame_2) : frame_p(frame_2) {}
 
 
     // Loads vocab ready for use, returns the size of the vocab in use

@@ -9,13 +9,13 @@
 //! Computes the 1d integral image of the specified horizon line
 //! in image img.  Assumes source image to be a 32-bit floating point.  Returns IplImage in 32-bit float form.
 void Integral(std::unique_ptr<std::vector<float>>& data,
-              std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame_3,
+              std::shared_ptr<const message::vision::ClassifiedImage> frame_3,
               int left_horizon,
               int right_horizon);
 
 // Convert horizon of image to single channel 32F
 void getGrayHorizon(std::unique_ptr<std::vector<float>>& result,
-                    std::shared_ptr<const message::vision::ClassifiedImage<message::vision::ObjectClass>> frame_4,
+                    std::shared_ptr<const message::vision::ClassifiedImage> frame_4,
                     int left_horizon,
                     int right_horizon);
 

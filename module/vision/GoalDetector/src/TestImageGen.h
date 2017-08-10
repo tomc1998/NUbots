@@ -3,7 +3,7 @@
 #include <sstream>
 #include <string>
 #include "GoalMatcherConstants.h"
-#include "message/localisation/FieldObject.h"
+#include "message/localisation/Field.h"
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
 

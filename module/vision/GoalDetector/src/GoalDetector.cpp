@@ -51,7 +51,7 @@
 #include "SurfDetection.h"
 #include "TestImageGen.h"
 #include "message/input/Image.h"
-#include "message/localisation/FieldObject.h"
+#include "message/localisation/Field.h"
 
 
 namespace module {
@@ -176,12 +176,12 @@ namespace vision {
 
             if (imageNum <= 21) {
                 std::vector<uint8_t> test_image(IMAGE_HEIGHT * IMAGE_WIDTH * 2, 0);
-                std::unique_ptr<message::localisation::Self> self = std::make_unique<message::localisation::Self>();
+                std::unique_ptr<message::localisation::Field> field = std::make_unique<message::localisation::Field>();
 
                 arma::vec2 n({0.0, 1.0});
                 double d;
 
-                test_image = backgroundImageGen(imageNum, self, &d);
+                test_image = backgroundImageGen(imageNum, field, &d);
                 auto frame =
                     std::make_unique<ClassifiedImage<ObjectClass>>();  // Create an empty ClassifiedImage object
                 frame->image = std::make_shared<const Image>(
@@ -189,18 +189,18 @@ namespace vision {
                 frame->horizon = Line(n, d);
                 printf("Producing background image #%d\n", imageNum);
                 imageNum++;
-                emit(std::move(self));
+                emit(std::move(field));
                 emit(std::move(frame));
             }
             else if (imageNum <= 54) {
                 goalMatcher.setWasInitial(false);
                 std::vector<uint8_t> test_image(IMAGE_HEIGHT * IMAGE_WIDTH * 2, 0);
-                std::unique_ptr<message::localisation::Self> self = std::make_unique<message::localisation::Self>();
+                std::unique_ptr<message::localisation::Field> field = std::make_unique<message::localisation::Field>();
 
                 arma::vec2 n({0.0, 1.0});
                 double d;
 
-                test_image = testImageGen(imageNum - 21, self, &d, awayImages);
+                test_image = testImageGen(imageNum - 21, field, &d, awayImages);
                 auto frame =
                     std::make_unique<ClassifiedImage<ObjectClass>>();  // Create an empty ClassifiedImage object
                 frame->image = std::make_shared<const Image>(
@@ -208,7 +208,7 @@ namespace vision {
                 frame->horizon = Line(n, d);
                 printf("Producing Test image #%d\n", imageNum - 21);
                 imageNum++;
-                emit(std::move(self));
+                emit(std::move(field));
                 emit(std::move(frame));
             }
             else if (imageNum == 55) {
@@ -865,7 +865,7 @@ namespace vision {
                                         landmarks,
                                         landmark_tf,
                                         landmark_pixLoc,
-                                        self,
+                                        field,
                                         awayGoalProb,
                                         MapFileName,
                                         &resultTable);
@@ -874,7 +874,7 @@ namespace vision {
                     printf("resultTable(%d:%d,:)\n", (imageNum - 23) * 8, (imageNum - 23) * 8 + 7);
                     Eigen::MatrixXd temp = resultTable.middleRows((imageNum - 23) * 8, 8);
                     goalMatcher.process(
-                        rawImage, landmarks, landmark_tf, landmark_pixLoc, selfblah, awayGoalProb, MapFileName, &temp);
+                        rawImage, landmarks, landmark_tf, landmark_pixLoc, field, awayGoalProb, MapFileName, &temp);
                     resultTable.middleRows((imageNum - 23) * 8, 8) = temp;
                 }
                 printf("awayGoalProb = %.2f\n", awayGoalProb);
