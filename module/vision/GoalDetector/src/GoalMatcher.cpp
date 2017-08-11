@@ -15,7 +15,7 @@ GoalMatcher::GoalMatcher() {
     homeMapSize = 0;
 
     while ((int) obs.size() < WINDOW_SIZE) {
-        obs.push_back(message::vision::Goal::Team::UNKNOWN);
+        obs.push_back(message::vision::Goal::Team::UNKNOWN_TEAM);
     }
 }
 
@@ -59,7 +59,7 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
     Eigen::VectorXf query;
     std::vector<std::vector<float>> query_pixLoc;
     unsigned int seed = 42;  // Not sure what this seed does, but it is supposed to come from the figure.
-    type              = message::vision::Goal::Team::UNKNOWN;
+    type              = message::vision::Goal::Team::UNKNOWN_TEAM;
 
     // Augment landmarks with those from a previous matched frame if possible
 
@@ -124,7 +124,7 @@ void GoalMatcher::process(std::shared_ptr<const message::vision::ClassifiedImage
                           Eigen::MatrixXd* resultTable) {
 
     // Adjust robotPos for head yaw
-    AbsCoord position = field;
+    AbsCoord position = {field.position[0], field.position[1], field.position[2]};
     printf("Robot is in position: <%0.1f,%0.1f,%0.1f>\n", position.x(), position.y(), position.theta());
     /*
     if (isnan(position.x()) || isnan(position.y()) || isnan(position.theta())){
@@ -216,7 +216,7 @@ void GoalMatcher::process(std::shared_ptr<const message::vision::ClassifiedImage
     }
     else {  // landmark retrieval and goal classification mode
         printf("Landmark retrieval mode\n");
-        message::vision::Goal::Team type = message::vision::Goal::Team::UNKNOWN;
+        message::vision::Goal::Team type = message::vision::Goal::Team::UNKNOWN_TEAM;
         classifyGoalArea(frame, landmarks, landmark_tf, landmark_pixLoc, type, resultTable);
         // frame.goalArea = type;
 

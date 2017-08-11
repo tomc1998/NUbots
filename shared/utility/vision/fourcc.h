@@ -150,7 +150,7 @@ namespace vision {
         // R0 G0 B0 R1 GR B1 R2 GB B2 ...
         int origin = (y * width + x);
 
-        return {0, 0, data[origin]};
+        return {data[origin], 0, 0};
     }
 
     inline Pixel getGRBGPixel(uint x, uint y, int width, int height, const std::vector<uint8_t>& data) {

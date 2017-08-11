@@ -175,22 +175,21 @@ namespace vision {
             }
 
             if (imageNum <= 21) {
-                std::vector<uint8_t> test_image(IMAGE_HEIGHT * IMAGE_WIDTH * 2, 0);
+                std::vector<uint8_t> test_image(IMAGE_HEIGHT * IMAGE_WIDTH, 0);
                 std::unique_ptr<message::localisation::Field> field = std::make_unique<message::localisation::Field>();
 
                 arma::vec2 n({0.0, 1.0});
                 double d;
 
-                test_image = backgroundImageGen(imageNum, field, &d);
-                auto frame =
-                    std::make_unique<ClassifiedImage<ObjectClass>>();  // Create an empty ClassifiedImage object
+                test_image   = backgroundImageGen(imageNum, field, &d);
+                auto frame   = std::make_unique<ClassifiedImage>();  // Create an empty ClassifiedImage object
                 frame->image = std::make_shared<const Image>(
                     (uint) IMAGE_WIDTH, (uint) IMAGE_HEIGHT, fake_timestamp, std::move(test_image));
                 frame->horizon = Line(n, d);
                 printf("Producing background image #%d\n", imageNum);
                 imageNum++;
-                emit(std::move(field));
-                emit(std::move(frame));
+                // emit(std::move(field));
+                // emit(std::move(frame));
             }
             else if (imageNum <= 54) {
                 goalMatcher.setWasInitial(false);
@@ -200,129 +199,134 @@ namespace vision {
                 arma::vec2 n({0.0, 1.0});
                 double d;
 
-                test_image = testImageGen(imageNum - 21, field, &d, awayImages);
-                auto frame =
-                    std::make_unique<ClassifiedImage<ObjectClass>>();  // Create an empty ClassifiedImage object
+                test_image   = testImageGen(imageNum - 21, field, &d, awayImages);
+                auto frame   = std::make_unique<ClassifiedImage>();  // Create an empty ClassifiedImage object
                 frame->image = std::make_shared<const Image>(
                     (uint) IMAGE_WIDTH, (uint) IMAGE_HEIGHT, fake_timestamp, std::move(test_image));
                 frame->horizon = Line(n, d);
                 printf("Producing Test image #%d\n", imageNum - 21);
                 imageNum++;
-                emit(std::move(field));
-                emit(std::move(frame));
+                // emit(std::move(field));
+                // emit(std::move(frame));
             }
-            else if (imageNum == 55) {
-                printf("\t\tBest\n");
-                printf("Image\tMatch Scores\t AWAY/HOME\tInliers   Outliers\n");
-                printf("=====================================================================================\n");
-                for (int m = 0; m < 33; m++) {
-                    printf("#%2d\t\t\t", m + 1);
-                    for (int mi = 0; mi < 8; mi++) {
-                        if ((resultTable(m * 8 + mi, 1) < 0.1) && (resultTable(m * 8 + mi, 1) > -0.1)) {
-                            printf("----\t\t\t -\t\t   --\t\t--\n");
-                        }
-                        else {
-                            printf("%.2f\t\t\t%2.0f\t\t   %3.0f\t\t%3.0f\n",
-                                   resultTable(m * 8 + mi, 0),
-                                   resultTable(m * 8 + mi, 1),
-                                   resultTable(m * 8 + mi, 2),
-                                   resultTable(m * 8 + mi, 3));
-                        }
-                        if (mi < 7) printf("\t\t\t");
-                    }
-                    printf("--------------------------------------------------------------------------------------\n");
-                }
-
-
-                // ofstream myfile;
-                // myfile.open("/home/Desktop/resultTable.txt");
-                /*
-                myfile << ",Best,,,\n";
-                myfile << "Image,Match Scores,AWAY/HOME,Inliers,Outliers,Ratio,Correct\n";
-                for (int m = 0;m < 33;m++){
-                    myfile << "#" << m+1 << ",";
-                    for (int mi = 0;mi < 8;mi++) {
-                        if ((resultTable(m*8+mi,1) < 0.1) && (resultTable(m*8+mi,1) > -0.1)){
-                            myfile << "-,-,-,-,,\n";
-                        }
-                        else {
-                            myfile << resultTable(m*8+mi,0) << ",";
-                            if (resultTable(m*8+mi,1) > 0.5) myfile << "AWAY,";
-                            else myfile << "HOME,";
-                            myfile << resultTable(m*8+mi,2) << "," << resultTable(m*8+mi,3);
-                            if ((mi == 0) && ((resultTable(m*8+3,1) > 0.1) || (resultTable(m*8+3,1) < -0.1))){
-                                myfile << "," << resultTable(m*8,4) << "/" << resultTable(m*8,5) << ",";
-                                float awayGoalVotes = resultTable(m*8,4) - resultTable(m*8,5);
-                                if ((awayImages == 1)&&(awayGoalVotes < -1.9)) myfile << "WRONG\n"; // WRONG for AWAY
-                dataset
-                                else if ((awayImages == 1)&&(awayGoalVotes > 1.9)) myfile << "CORRECT\n";
-                                else if ((awayImages == 0)&&(awayGoalVotes < -1.9)) myfile << "CORRECT\n";
-                                else if ((awayImages == 0)&&(awayGoalVotes > 1.9)) myfile << "WRONG\n";
-                                else myfile << "-\n";
+            /*
+                        else if (imageNum == 55) {
+                            printf("\t\tBest\n");
+                            printf("Image\tMatch Scores\t AWAY/HOME\tInliers   Outliers\n");
+                            printf("=====================================================================================\n");
+                            for (int m = 0; m < 33; m++) {
+                                printf("#%2d\t\t\t", m + 1);
+                                for (int mi = 0; mi < 8; mi++) {
+                                    if ((resultTable(m * 8 + mi, 1) < 0.1) && (resultTable(m * 8 + mi, 1) > -0.1)) {
+                                        printf("----\t\t\t -\t\t   --\t\t--\n");
+                                    }
+                                    else {
+                                        printf("%.2f\t\t\t%2.0f\t\t   %3.0f\t\t%3.0f\n",
+                                               resultTable(m * 8 + mi, 0),
+                                               resultTable(m * 8 + mi, 1),
+                                               resultTable(m * 8 + mi, 2),
+                                               resultTable(m * 8 + mi, 3));
+                                    }
+                                    if (mi < 7) printf("\t\t\t");
+                                }
+                                printf("--------------------------------------------------------------------------------------\n");
                             }
-                            else myfile << ",,\n";
-                        }
-                        if (mi < 7) myfile << ",";
-                    }
-                }
-                //myfile.close();
-                */
-                /******* CORRECT/WRONG COUNTER **********/
-                int correctCount = 0;
-                int wrongCount   = 0;
-                for (int m = 0; m < 33; m++) {
-                    float awayGoalVotes = resultTable(m * 8, 4) - resultTable(m * 8, 5);
-                    printf("%.3f\n", awayGoalVotes);
-                    if ((resultTable(m * 8, 4) > 1.99)
-                        || (resultTable(m * 8, 5) > 1.99)) {  // Checks if enough matches are available
-                        if (((awayImages == 1) && (awayGoalVotes > 1.99))
-                            || ((awayImages == 0) && (awayGoalVotes < -1.99))) {
-                            correctCount++;
-                        }
-                        else if (((awayImages == 1) && (awayGoalVotes < -1.99))
-                                 || ((awayImages == 0) && (awayGoalVotes > 1.99))) {
-                            wrongCount++;
-                        }
-                    }
-                }
 
-                printf("\nCorrect Count = %d", correctCount);
-                int CorrectPercent = (int) (correctCount / imageSetSize * 100 + 0.5);
-                int WrongPercent   = (int) (wrongCount / imageSetSize * 100 + 0.5);
-                int UnsurePercent  = (int) ((imageSetSize - correctCount - wrongCount) / imageSetSize * 100 + 0.5);
-                printf(" (%d)\n\n", CorrectPercent);
-                // myfile << correctCount;
-                myfile2 << CorrectPercent << "/" << WrongPercent << "/" << UnsurePercent;
-                if (CutoffTableColCounter < (CutoffTableColMax - 1)) {  // Not yet the end of a row
-                    myfile2 << ",";
-                    CutoffTableColCounter++;
-                    imageNum = 22;          // Reset imageNum
-                    if (awayImages == 0) {  // Transition to next cosine cutoff
-                        awayImages = 1;     // Toggling awayImages
-                        goalMatcher.setValidCosineScore(goalMatcher.getValidCosineScore()
-                                                        + 0.1);  // Increasing Valid Cosine Score by 0.1
-                        printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
-                    }
-                    else {
-                        awayImages = 0;
-                        printf("ValidCosineScore stays at: %.2f\n", goalMatcher.getValidCosineScore());
-                    }
-                }
-                else if (CutoffTableRowCounter < (CutoffTableRowMax - 1)) {  // End of row, but not of table
-                    imageNum              = 22;
-                    CutoffTableColCounter = 0;
-                    CutoffTableRowCounter++;
-                    goalMatcher.setValidInliers(goalMatcher.getValidInliers() + 10);
-                    goalMatcher.setValidCosineScore(0.2);
-                    myfile2 << endl << goalMatcher.getValidInliers() << ",";
-                    awayImages = 1;
-                    printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
-                }
-                else {  // End of row and table
-                    imageNum++;
-                }
-                resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);
-            }
+
+                            // ofstream myfile;
+                            // myfile.open("/home/Desktop/resultTable.txt");
+                            /*
+                            myfile << ",Best,,,\n";
+                            myfile << "Image,Match Scores,AWAY/HOME,Inliers,Outliers,Ratio,Correct\n";
+                            for (int m = 0;m < 33;m++){
+                                myfile << "#" << m+1 << ",";
+                                for (int mi = 0;mi < 8;mi++) {
+                                    if ((resultTable(m*8+mi,1) < 0.1) && (resultTable(m*8+mi,1) > -0.1)){
+                                        myfile << "-,-,-,-,,\n";
+                                    }
+                                    else {
+                                        myfile << resultTable(m*8+mi,0) << ",";
+                                        if (resultTable(m*8+mi,1) > 0.5) myfile << "AWAY,";
+                                        else myfile << "HOME,";
+                                        myfile << resultTable(m*8+mi,2) << "," << resultTable(m*8+mi,3);
+                                        if ((mi == 0) && ((resultTable(m*8+3,1) > 0.1) || (resultTable(m*8+3,1) <
+               -0.1))){
+                                            myfile << "," << resultTable(m*8,4) << "/" << resultTable(m*8,5) << ",";
+                                            float awayGoalVotes = resultTable(m*8,4) - resultTable(m*8,5);
+                                            if ((awayImages == 1)&&(awayGoalVotes < -1.9)) myfile << "WRONG\n"; // WRONG
+               for AWAY
+                            dataset
+                                            else if ((awayImages == 1)&&(awayGoalVotes > 1.9)) myfile << "CORRECT\n";
+                                            else if ((awayImages == 0)&&(awayGoalVotes < -1.9)) myfile << "CORRECT\n";
+                                            else if ((awayImages == 0)&&(awayGoalVotes > 1.9)) myfile << "WRONG\n";
+                                            else myfile << "-\n";
+                                        }
+                                        else myfile << ",,\n";
+                                    }
+                                    if (mi < 7) myfile << ",";
+                                }
+                            }
+                            //myfile.close();
+                            */
+            /******* CORRECT/WRONG COUNTER **********/
+            /*
+                        int correctCount = 0;
+                        int wrongCount   = 0;
+                        for (int m = 0; m < 33; m++) {
+                            float awayGoalVotes = resultTable(m * 8, 4) - resultTable(m * 8, 5);
+                            printf("%.3f\n", awayGoalVotes);
+                            if ((resultTable(m * 8, 4) > 1.99)
+                                || (resultTable(m * 8, 5) > 1.99)) {  // Checks if enough matches are available
+                                if (((awayImages == 1) && (awayGoalVotes > 1.99))
+                                    || ((awayImages == 0) && (awayGoalVotes < -1.99))) {
+                                    correctCount++;
+                                }
+                                else if (((awayImages == 1) && (awayGoalVotes < -1.99))
+                                         || ((awayImages == 0) && (awayGoalVotes > 1.99))) {
+                                    wrongCount++;
+                                }
+                            }
+                        }
+
+                        printf("\nCorrect Count = %d", correctCount);
+                        int CorrectPercent = (int) (correctCount / imageSetSize * 100 + 0.5);
+                        int WrongPercent   = (int) (wrongCount / imageSetSize * 100 + 0.5);
+                        int UnsurePercent  = (int) ((imageSetSize - correctCount - wrongCount) / imageSetSize * 100 +
+               0.5);
+                        printf(" (%d)\n\n", CorrectPercent);
+                        // myfile << correctCount;
+                        myfile2 << CorrectPercent << "/" << WrongPercent << "/" << UnsurePercent;
+                        if (CutoffTableColCounter < (CutoffTableColMax - 1)) {  // Not yet the end of a row
+                            myfile2 << ",";
+                            CutoffTableColCounter++;
+                            imageNum = 22;          // Reset imageNum
+                            if (awayImages == 0) {  // Transition to next cosine cutoff
+                                awayImages = 1;     // Toggling awayImages
+                                goalMatcher.setValidCosineScore(goalMatcher.getValidCosineScore()
+                                                                + 0.1);  // Increasing Valid Cosine Score by 0.1
+                                printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
+                            }
+                            else {
+                                awayImages = 0;
+                                printf("ValidCosineScore stays at: %.2f\n", goalMatcher.getValidCosineScore());
+                            }
+                        }
+                        else if (CutoffTableRowCounter < (CutoffTableRowMax - 1)) {  // End of row, but not of table
+                            imageNum              = 22;
+                            CutoffTableColCounter = 0;
+                            CutoffTableRowCounter++;
+                            goalMatcher.setValidInliers(goalMatcher.getValidInliers() + 10);
+                            goalMatcher.setValidCosineScore(0.2);
+                            myfile2 << endl << goalMatcher.getValidInliers() << ",";
+                            awayImages = 1;
+                            printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
+                        }
+                        else {  // End of row and table
+                            imageNum++;
+                        }
+                        resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);
+                        }
+            */
             else if (imageNum == 56) {
                 printf("\nFINISHED...PRESS CTRL + C\n");
                 imageNum++;

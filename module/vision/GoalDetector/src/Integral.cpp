@@ -3,6 +3,9 @@
 #include "Integral.h"
 #include <stdio.h>
 #include "message/input/Image.h"
+#include "utility/vision/Vision.h"
+#include "utility/vision/fourcc.h"
+
 // Convert horizon of image to single channel 32F
 void getGrayHorizon(std::unique_ptr<std::vector<float>>& result,
                     std::shared_ptr<const message::vision::ClassifiedImage> frame_4,
@@ -34,13 +37,15 @@ void getGrayHorizon(std::unique_ptr<std::vector<float>>& result,
             //}
             for (int j = -(SURF_HORIZON_WIDTH / 2); j <= SURF_HORIZON_WIDTH / 2; j += 2) {
                 if ((y0 + j) >= 0 && (y0 + j) < IMAGE_HEIGHT) {
-                    vsum += result->at(x0 / SURF_SUBSAMPLE) +=
+                    utility::vision::Pixel pixel =
                         utility::vision::getPixel(x0,
                                                   y0 + j,
                                                   image.image->dimensions[0],
                                                   image.image->dimensions[1],
                                                   image.image->data,
-                                                  static_cast<utility::vision::FOURCC>(image.image->format))
+                                                  static_cast<utility::vision::FOURCC>(image.image->format));
+                    vsum += result->at(x0 / SURF_SUBSAMPLE) += pixel.components.y;
+
                     //(*frame_4->image)(x0, y0 + j).y;
                     // if (x0 == 0){
                     //  printf("using row %d, based on y0= %d and j= %d, then the cell is:

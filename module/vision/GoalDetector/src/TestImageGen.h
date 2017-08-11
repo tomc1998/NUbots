@@ -11,7 +11,7 @@ using namespace cv;
 using namespace std;
 
 std::vector<uint8_t> testImageGen(uint8_t imageNum,
-                                  std::unique_ptr<message::localisation::Self>& self,
+                                  std::unique_ptr<message::localisation::Field>& field,
                                   double* d,
                                   int awayImages) {
     vector<double> d_values;
@@ -32,10 +32,9 @@ std::vector<uint8_t> testImageGen(uint8_t imageNum,
     *d = d_values.at(imageNum - 1);
     printf("d is %.0f\n", *d);
     std::vector<uint8_t> image(IMAGE_HEIGHT * IMAGE_WIDTH * 2, 0);
-    self->position[0] = 0;  // x position
-    self->position[1] = 0;  // y position
-    self->heading[0]  = 1;  // x component heading
-    self->heading[1]  = 0;  // y component heading
+    field->position[0] = 0;  // x position
+    field->position[1] = 0;  // y position
+    field->position[2] = 0;  // theta
 
     string suffix = ".png";
     stringstream ss;

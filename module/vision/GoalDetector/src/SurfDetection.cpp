@@ -10,13 +10,12 @@
 #include "message/input/Image.h"
 #include "message/vision/ClassifiedImage.h"
 #include "utility/math/geometry/Line.h"
-
+#include "utility/vision/ClassifiedImage.h"
 
 namespace module {
 namespace vision {
     using message::input::Image;
     using message::vision::ClassifiedImage;
-    using message::vision::ObjectClass;
     using utility::math::geometry::Line;
 
     SurfDetection::SurfDetection(std::shared_ptr<const message::vision::ClassifiedImage> frame_2) : frame_p(frame_2) {}
@@ -46,13 +45,13 @@ namespace vision {
 
         // Get horizon location
         uint w, h;
-        w                 = frame_p->image->width;
-        h                 = frame_p->image->height;
-        int left_horizon  = frame_p->horizon.y(0);
-        int right_horizon = frame_p->horizon.y(w - 1);
+        w                 = frame_p->dimensions[0];
+        h                 = frame_p->dimensions[1];
+        int left_horizon  = utility::vision::visualHorizonAtPoint(*frame_p, 0);
+        int right_horizon = utility::vision::visualHorizonAtPoint(*frame_p, w - 1);
+
         // Check horizon is within frame
-        if (left_horizon >= 0 && left_horizon < h && right_horizon >= 0
-            && right_horizon < h) { /********** Need to check that the horizon is in the image ********************/
+        if (left_horizon >= 0 && left_horizon < h && right_horizon >= 0 && right_horizon < h) {
 
             // Create integral-image representation of the image
 
