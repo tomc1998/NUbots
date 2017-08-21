@@ -47,8 +47,8 @@ namespace vision {
         uint w, h;
         w                 = frame_p->dimensions[0];
         h                 = frame_p->dimensions[1];
-        int left_horizon  = utility::vision::visualHorizonAtPoint(*frame_p, 0);
-        int right_horizon = utility::vision::visualHorizonAtPoint(*frame_p, w - 1);
+        int left_horizon  = frame_p->horizon.distance;
+        int right_horizon = frame_p->horizon.distance;
 
         // Check horizon is within frame
         if (left_horizon >= 0 && left_horizon < h && right_horizon >= 0 && right_horizon < h) {
@@ -58,8 +58,8 @@ namespace vision {
             Integral(int_img, frame_p, left_horizon, right_horizon);
 
             // For testing purposes...needs to be deleted
-            // for (int i=0;i<IMAGE_WIDTH;++i){
-            //  printf("%0.1f ",int_img->at(i));
+            // for (int i = 0; i < IMAGE_WIDTH; ++i) {
+            //    printf("%0.1f ", int_img->at(i));
             //}
             // printf("\n");
 

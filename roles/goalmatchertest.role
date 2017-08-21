@@ -7,7 +7,5 @@ NUCLEAR_ROLE(
     support::VirtualCamera
     vision::GoalDetector
     vision::LUTClassifier
-
-
-
+    support::configuration::SoccerConfig
 )

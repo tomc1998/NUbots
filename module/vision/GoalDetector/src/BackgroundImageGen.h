@@ -4,15 +4,13 @@
 #include "message/localisation/Field.h"
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include "stdio.h"
 #include "utility/vision/fourcc.h"
 
 using namespace cv;
-using namespace std;
 using message::input::Image;
 
-std::vector<uint8_t> backgroundImageGen(uint8_t imageNum,
-                                        std::unique_ptr<message::localisation::Field>& field,
-                                        double* d) {
+Image backgroundImageGen(uint8_t imageNum, std::unique_ptr<message::localisation::Field>& field, double* d) {
 
     Mat raw_image;
     if (imageNum == 1) {
@@ -170,9 +168,13 @@ std::vector<uint8_t> backgroundImageGen(uint8_t imageNum,
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back09.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
 
+
     // Converting matrix to a concatenated long vector
     std::vector<uint8_t> data(IMAGE_HEIGHT * IMAGE_WIDTH, 0);
-    if (raw_image.isContinuous()) {
+    if (!raw_image.data) {
+        std::cout << "Could not open or find the image" << std::endl;
+    }
+    else if (raw_image.isContinuous()) {
         data.assign(raw_image.datastart, raw_image.dataend);
     }
     else {
@@ -180,5 +182,11 @@ std::vector<uint8_t> backgroundImageGen(uint8_t imageNum,
             data.insert(data.end(), raw_image.ptr<uchar>(i), raw_image.ptr<uchar>(i) + raw_image.cols);
         }
     }
-    return data;
+
+    /* Create the image */
+    Image image;
+    image.format     = utility::vision::FOURCC::GREY;
+    image.dimensions = {IMAGE_WIDTH, IMAGE_HEIGHT};
+    image.data       = data;
+    return image;
 }

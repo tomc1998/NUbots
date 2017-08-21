@@ -234,7 +234,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             // printf("tfidf_query dot tfidf_doc : %f, tfidf_query norm: %.2f, tfidf_doc norm:
             // %.2f\n",tfidf_query.dot(tfidf_doc),tfidf_query.norm(),tfidf_doc.norm());
 
-            map.at(i).score = PearsonsCorrelation(tfidf_query, tfidf_doc);
+            map.at(i).score = cosineScore(tfidf_query, tfidf_doc);
             printf("%2d. map score: %.2f   ", i + 1, map[i].score);
             if (map.at(i).score > VALID_COSINE_SCORE) {
                 printf("This is a valid cosine score");
