@@ -50,6 +50,8 @@ public:
                         int n,
                         Eigen::MatrixXd* resultTable);
 
+    float spatialPyramidCheck(std::vector<std::vector<float>> pixLoc, std::vector<std::vector<float>> query_pixLoc);
+
 
 private:
     void clearData() {

@@ -1,6 +1,7 @@
 #include "Tfidf.h"
 #include <stdio.h>
 #include <iostream>
+#include "GoalMatcherConstants.h"
 #include "RANSACLine.h"
 #include "Ransac.h"
 
@@ -280,6 +281,9 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             std::vector<std::vector<float>> pixLoc = queue.top().second;
             queue.pop();
 
+            // Spatial Pyramid geometric validation
+            float spatialPyramidCheck(pixLoc, query_pixLoc);
+
             // Do geometric validation - first build the points to run ransac
             std::vector<Point> matchpoints;
             for (int j = 0; j < T; j++) {
@@ -362,4 +366,42 @@ float Tfidf::PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b) {
     float n      = a.size();
 
     return (sumAB - sumA * sumB / n) / (sqrt((sumAsq - sumA * sumA / n) * (sumBsq - sumB * sumB / n)));
+}
+
+float spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc, std::vector<std::vector<float>> query_pixLoc) {
+
+    // each element of outside vector contains the tf for a pixel subset
+    std::vector<std::vector<float>> match_tf_subL1;
+    std::vector<std::vector<float>> query_tf_subL1;
+    std::vector<float> match_nd;
+    std::vector<float> query_nd;
+
+    float xmin     = 0.0;
+    float stepsize = 20.0;
+    int n_subset   = 0;  // Number of the cell
+    while (xmin < ((float) IMAGE_WIDTH - 1.0)) {
+        match_tf_subL1.push_back(std::vector<float>(match_pixLoc.size(), 0.0));
+        query_tf_subL1.push_back(std::vector<float>(match_pixLoc.size(), 0.0));
+        match_nd.push_back(0.0);
+        query_nd.push_back(0.0);
+
+        for (int i = 0; i < match_pixLoc.size(); ++i) {  // steps through each term
+            for (int j = 0; j < match_pixLoc[i].size(), ++j) {
+                if ((match_pixLoc[i][j] >= xmin) && (match_pixLoc[i][j] < (xmin + stepsize))) {
+                    match_tf_subL1[n_subset][i] += 1.0;
+                    match_nd[i] += 1.0;
+                }
+            }
+            for (int j = 0; j < query_pixLoc[i].size(), ++j) {
+                if ((query_pixLoc[i][j] >= xmin) && (query_pixLoc[i][j] < (xmin + stepsize))) {
+                    query_tf_subL1[n_subset][i] += 1.0;
+                    query_nd[i] += 1.0;
+                }
+            }
+        }
+        xmin += stepsize;
+        n_subset++;
+    }
+
+    return 0.0;
 }
