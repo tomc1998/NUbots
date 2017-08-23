@@ -159,7 +159,7 @@ namespace vision {
                 myfile2.open("/home/vagrant/NUbots/module/vision/GoalDetector/data/CutoffTable.txt");
             });
 
-        on<Every<100, std::chrono::milliseconds>>().then([this] {
+        on<Every<1000, std::chrono::milliseconds>>().then([this] {
 
             /* This is all stuff to make SurfDetection work in isolation. Will need to be deleted when integrated with
              * GoalMatching.cpp */

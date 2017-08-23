@@ -50,9 +50,6 @@ public:
                         int n,
                         Eigen::MatrixXd* resultTable);
 
-    float spatialPyramidCheck(std::vector<std::vector<float>> pixLoc, std::vector<std::vector<float>> query_pixLoc);
-
-
 private:
     void clearData() {
         T = 0;
@@ -65,6 +62,8 @@ private:
 
     float cosineScore(Eigen::VectorXf a, Eigen::VectorXf b);
     float PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b);
+    float spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
+                              std::vector<std::vector<float>> query_pixLoc);
 
 
     Vocab vocab;
