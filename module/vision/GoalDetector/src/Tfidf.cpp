@@ -370,10 +370,10 @@ float Tfidf::PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b) {
 }
 
 /*
- * L4:       |       |       |       |    <- 4 block groupings, offset by 3
- * L4:     |       |       |       |      <- 4 block groupings, offset by 2
- * L4:   |       |       |       |        <- 4 block groupings, offset by 1
- * L4: |       |       |       |       |  <- 4 block groupings
+ * L4:       |   3   |   7   |   11  |    <- 4 block groupings, offset by 3
+ * L4:     |   2   |   6   |   10  |      <- 4 block groupings, offset by 2
+ * L4:   |   1   |   5   |   9   |        <- 4 block groupings, offset by 1
+ * L4: |   0   |   4   |   8   |   12  |  <- 4 block groupings
  * L3:     |     |     |     |     |      <- 3 block groupings, offset by 2
  * L3:   |     |     |     |     |     |  <- 3 block groupings, offset by 1
  * L3: |     |     |     |     |     |    <- 3 block groupings
@@ -450,7 +450,9 @@ float Tfidf::spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
     int n_subset = query_ndL1.size();  // total number of L1 blocks
     int i_subset = 0;
     xmin         = 0;  // resetting
-    for (int L = 4; L >= 2; --L) {
+    int L_max    = 4;
+    int L_min    = 4;
+    for (int L = L_max; L >= L_min; --L) {
         while ((xmin + stepsize * L) <= IMAGE_WIDTH) {
             // for the match image first
             tf_sub_temp = match_tf_subL1[i_subset];
@@ -475,7 +477,8 @@ float Tfidf::spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
     }
 
     // another sum check
-    if ((match_tf_subL432.size() == 42) && (query_tf_subL432.size() == 42)) {
+    // For L=4:13, L=3:14, L=2:15
+    if ((match_tf_subL432.size() == 13) && (query_tf_subL432.size() == 13)) {
         std::cout << ", chk2=S)";
     }
     else {
@@ -483,6 +486,42 @@ float Tfidf::spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
                   << ", query_tf_subL432 size = " << query_tf_subL432.size();
     }
 
+    // Comparing the blocks on level 4
+    std::cout << "\n\n Spatial Pyramid Scores: ";
+    int L = 4;
+    Eigen::VectorXf match_tfidf_subL4;
+    Eigen::VectorXf query_tfidf_subL4;
+    float maxSPScore = 0;
+    float SPScore    = 0;
+    int i_match      = 0;
+    int i_query      = 4;
+    int n_blocks;
+    for (int i = 1; i <= 9; ++i) {
+        if (i == 5) {
+            i_match  = 0;
+            i_query  = 0;
+            n_blocks = 4;
+        }
+        else {
+            n_blocks = 3;
+        }
 
-    return 0.0;
+        for (int j = 0; j < n_blocks; ++j) {
+            match_tfidf_subL4 =
+                (match_tf_subL432[i_match + j * L] / match_tf_subL432[i_match + j * L].sum()).array() * idf.array();
+            query_tfidf_subL4 =
+                (query_tf_subL432[i_query + j * L] / query_tf_subL432[i_query + j * L].sum()).array() * idf.array();
+            SPScore += cosineScore(query_tfidf_subL4, match_tfidf_subL4);
+        }
+        SPScore /= n_blocks;  // Average
+        if (SPScore > maxSPScore) {
+            maxSPScore = SPScore;
+        }
+        printf("%.3f ", SPScore);
+        SPScore = 0;
+        i_match++;
+    }
+    std::cout << std::endl << std::endl;
+
+    return maxSPScore;
 }
