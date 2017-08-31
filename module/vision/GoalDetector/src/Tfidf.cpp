@@ -283,14 +283,14 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             queue.pop();
 
             // Precomputing match info
-            std::vector<Eigen::VectorXf> match_tf_subL43 = spatialPyramidMatchPreCalc(pixLoc);
+            std::vector<Eigen::VectorXf> match_tfidf_subL43 = spatialPyramidMatchPreCalc(pixLoc);
 
             // Spatial Pyramid geometric validation
             auto SPtimer_s            = std::chrono::system_clock::now();
-            float spatialPyramidScore = spatialPyramidCheck(match_tf_subL43, query_pixLoc);
+            float spatialPyramidScore = spatialPyramidCheck(match_tfidf_subL43, query_pixLoc);
             auto SPtime_e             = std::chrono::system_clock::now();
             auto SPtimer              = std::chrono::duration_cast<std::chrono::microseconds>(SPtime_e - SPtimer_s);
-            std::cout << ", SPtimer: " << SPtimer.count() << " ms";
+            std::cout << ", SPtimer: " << SPtimer.count() << " us";
 
             auto RANSACtimer_s = std::chrono::system_clock::now();
             // Do geometric validation - first build the points to run ransac
@@ -323,7 +323,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
 
             auto RANSACtimer_e = std::chrono::system_clock::now();
             auto RANSACtimer   = std::chrono::duration_cast<std::chrono::microseconds>(RANSACtimer_e - RANSACtimer_s);
-            std::cout << ", RANSACtimer: " << RANSACtimer.count() << " ms";
+            std::cout << ", RANSACtimer: " << RANSACtimer.count() << " us";
 
             if (ransacresult && (resultLine.t2 != 0.f)) {  // check t2 but should be fixed by slope constraint anyway
                 // count the inliers
@@ -391,7 +391,7 @@ float Tfidf::PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b) {
  * L1: | | | | | | | | | | | | | | | | |
  */
 
-float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
+float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL43,
                                  std::vector<std::vector<float>> query_pixLoc) {
 
     // each element of outside vector contains the tf for a pixel subset
@@ -400,6 +400,7 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
     int xmin     = 0;
     int stepsize = 20;
 
+    auto timer1s = std::chrono::system_clock::now();
     // Splitting up the x positions into blocks the size of 'stepsize'.
     while ((xmin + stepsize) <= IMAGE_WIDTH) {
         query_tf_subL1.push_back(Eigen::VectorXf::Zero(query_pixLoc.size()));
@@ -413,9 +414,13 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
         }
         xmin += stepsize;
     }
+    auto timer1e = std::chrono::system_clock::now();
+    auto timer1  = std::chrono::duration_cast<std::chrono::microseconds>(timer1e - timer1s);
+    std::cout << ", t1: " << timer1.count() << "us";
 
     // Combining the base of the pyramid blocks to create the high layers (4 then 3)
-    std::vector<Eigen::VectorXf> query_tf_subL43;
+    auto timer2s = std::chrono::system_clock::now();
+    std::vector<Eigen::VectorXf> query_tfidf_subL43;
     Eigen::VectorXf tf_sub_temp;
     int i_subset = 0;
     xmin         = 0;  // resetting
@@ -427,23 +432,26 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
             for (int i = 1; i < L; ++i) {
                 tf_sub_temp += query_tf_subL1[i_subset + i];
             }
-            query_tf_subL43.push_back(tf_sub_temp);
+            query_tfidf_subL43.push_back((tf_sub_temp / tf_sub_temp.sum()).array() * idf.array());
             xmin += stepsize;
             i_subset++;
         }
         xmin     = 0;
         i_subset = 0;
     }
+    auto timer2e = std::chrono::system_clock::now();
+    auto timer2  = std::chrono::duration_cast<std::chrono::microseconds>(timer2e - timer2s);
+    std::cout << ", t2: " << timer2.count() << "us";
 
     // Comparing the blocks on level 4
-    int L = 4;
-    Eigen::VectorXf match_tfidf_subL4;
-    Eigen::VectorXf query_tfidf_subL4;
+    auto timer3s     = std::chrono::system_clock::now();
+    int L            = 4;
     float maxSPScore = 0;
     float SPScore    = 0;
     int i_match      = 0;
     int i_query      = 4;
     int n_blocks;
+
     for (int i = 1; i <= 9; ++i) {
         if (i == 5) {
             i_match  = 0;
@@ -455,11 +463,7 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
         }
 
         for (int j = 0; j < n_blocks; ++j) {
-            match_tfidf_subL4 =
-                (match_tf_subL43[i_match + j * L] / match_tf_subL43[i_match + j * L].sum()).array() * idf.array();
-            query_tfidf_subL4 =
-                (query_tf_subL43[i_query + j * L] / query_tf_subL43[i_query + j * L].sum()).array() * idf.array();
-            SPScore += cosineScore(query_tfidf_subL4, match_tfidf_subL4);
+            SPScore += cosineScore(query_tfidf_subL43[i_query + j * L], match_tfidf_subL43[i_query + j * L]);
         }
         SPScore /= n_blocks;  // Average
         if (SPScore > maxSPScore) {
@@ -468,8 +472,12 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
         SPScore = 0;
         i_match++;
     }
+    auto timer3e = std::chrono::system_clock::now();
+    auto timer3  = std::chrono::duration_cast<std::chrono::microseconds>(timer3e - timer3s);
+    std::cout << ", t3: " << timer3.count() << "us";
 
     // Comaring the level 3 blocks from query, with the level 4 blocks from match
+    auto timer4s = std::chrono::system_clock::now();
     Eigen::VectorXf query_tfidf_subL3;
     i_match  = 0;
     i_query  = 20;
@@ -485,12 +493,7 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
         }
 
         for (int j = 0; j < n_blocks; ++j) {
-            match_tfidf_subL4 =
-                (match_tf_subL43[i_match + j * L] / match_tf_subL43[i_match + j * L].sum()).array() * idf.array();
-            query_tfidf_subL3 =
-                (query_tf_subL43[i_query + j * (L - 1)] / query_tf_subL43[i_query + j * (L - 1)].sum()).array()
-                * idf.array();
-            SPScore += cosineScore(query_tfidf_subL3, match_tfidf_subL4);
+            SPScore += cosineScore(query_tfidf_subL43[i_query + j * (L - 1)], match_tfidf_subL43[i_match + j * L]);
         }
         SPScore /= n_blocks;  // Average
         if (SPScore > maxSPScore) {
@@ -499,8 +502,12 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
         SPScore = 0;
         i_query--;
     }
+    auto timer4e = std::chrono::system_clock::now();
+    auto timer4  = std::chrono::duration_cast<std::chrono::microseconds>(timer4e - timer4s);
+    std::cout << ", t4: " << timer4.count() << "us";
 
     // Comaring the level 4 blocks from query, with the level 3 blocks from match
+    auto timer5s = std::chrono::system_clock::now();
     Eigen::VectorXf match_tfidf_subL3;
     i_match  = 20;
     i_query  = 0;
@@ -516,12 +523,7 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
         }
 
         for (int j = 0; j < n_blocks; ++j) {
-            match_tfidf_subL3 =
-                (match_tf_subL43[i_match + j * (L - 1)] / match_tf_subL43[i_match + j * (L - 1)].sum()).array()
-                * idf.array();
-            query_tfidf_subL4 =
-                (query_tf_subL43[i_query + j * L] / query_tf_subL43[i_query + j * L].sum()).array() * idf.array();
-            SPScore += cosineScore(query_tfidf_subL4, match_tfidf_subL3);
+            SPScore += cosineScore(query_tfidf_subL43[i_query + j * L], match_tfidf_subL43[i_match + j * (L - 1)]);
         }
         SPScore /= n_blocks;  // Average
         if (SPScore > maxSPScore) {
@@ -530,6 +532,9 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
         SPScore = 0;
         i_match--;
     }
+    auto timer5e = std::chrono::system_clock::now();
+    auto timer5  = std::chrono::duration_cast<std::chrono::microseconds>(timer5e - timer5s);
+    std::cout << ", t5: " << timer5.count() << "us";
     printf(" (maxSPScore: %0.2f)", maxSPScore);
 
     return maxSPScore;
@@ -557,7 +562,7 @@ std::vector<Eigen::VectorXf> Tfidf::spatialPyramidMatchPreCalc(std::vector<std::
     }
 
     // Combining the base of the pyramid blocks to create the high layers (4 then 3)
-    std::vector<Eigen::VectorXf> match_tf_subL43;
+    std::vector<Eigen::VectorXf> match_tfidf_subL43;
     Eigen::VectorXf tf_sub_temp;
     int i_subset = 0;
     xmin         = 0;  // resetting
@@ -569,12 +574,12 @@ std::vector<Eigen::VectorXf> Tfidf::spatialPyramidMatchPreCalc(std::vector<std::
             for (int i = 1; i < L; ++i) {
                 tf_sub_temp += match_tf_subL1[i_subset + i];
             }
-            match_tf_subL43.push_back(tf_sub_temp);
+            match_tfidf_subL43.push_back((tf_sub_temp / tf_sub_temp.sum()).array() * idf.array());
             xmin += stepsize;
             i_subset++;
         }
         xmin     = 0;
         i_subset = 0;
     }
-    return match_tf_subL43;
+    return match_tfidf_subL43;
 }

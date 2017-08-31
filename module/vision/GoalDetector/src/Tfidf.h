@@ -62,7 +62,7 @@ private:
 
     float cosineScore(Eigen::VectorXf a, Eigen::VectorXf b);
     float PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b);
-    float spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
+    float spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL43,
                               std::vector<std::vector<float>> query_pixLoc);
     std::vector<Eigen::VectorXf> spatialPyramidMatchPreCalc(std::vector<std::vector<float>> match_pixLoc);
 
