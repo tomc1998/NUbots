@@ -286,8 +286,13 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             std::vector<Eigen::VectorXf> match_tf_subL43 = spatialPyramidMatchPreCalc(pixLoc);
 
             // Spatial Pyramid geometric validation
+            auto SPtimer_s            = std::chrono::system_clock::now();
             float spatialPyramidScore = spatialPyramidCheck(match_tf_subL43, query_pixLoc);
+            auto SPtime_e             = std::chrono::system_clock::now();
+            auto SPtimer              = std::chrono::duration_cast<std::chrono::microseconds>(SPtime_e - SPtimer_s);
+            std::cout << ", SPtimer: " << SPtimer.count() << " ms";
 
+            auto RANSACtimer_s = std::chrono::system_clock::now();
             // Do geometric validation - first build the points to run ransac
             std::vector<Point> matchpoints;
             for (int j = 0; j < T; j++) {
@@ -315,6 +320,10 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                                                             consBuf,
                                                             seed,
                                                             slopeConstraint);
+
+            auto RANSACtimer_e = std::chrono::system_clock::now();
+            auto RANSACtimer   = std::chrono::duration_cast<std::chrono::microseconds>(RANSACtimer_e - RANSACtimer_s);
+            std::cout << ", RANSACtimer: " << RANSACtimer.count() << " ms";
 
             if (ransacresult && (resultLine.t2 != 0.f)) {  // check t2 but should be fixed by slope constraint anyway
                 // count the inliers
