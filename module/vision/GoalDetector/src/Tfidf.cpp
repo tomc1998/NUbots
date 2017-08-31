@@ -282,8 +282,11 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             std::vector<std::vector<float>> pixLoc = queue.top().second;
             queue.pop();
 
+            // Precomputing match info
+            std::vector<Eigen::VectorXf> match_tf_subL43 = spatialPyramidMatchPreCalc(pixLoc);
+
             // Spatial Pyramid geometric validation
-            float spatialPyramidScore = spatialPyramidCheck(pixLoc, query_pixLoc);
+            float spatialPyramidScore = spatialPyramidCheck(match_tf_subL43, query_pixLoc);
 
             // Do geometric validation - first build the points to run ransac
             std::vector<Point> matchpoints;
@@ -313,9 +316,6 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                                                             seed,
                                                             slopeConstraint);
 
-            // printf("RANSAC result = %d\n",ransacresult);
-            // printf("result line = (%.2f,%.2f)(%.2f,%.2f)\n", resultLine.p1[0], resultLine.p1[1], resultLine.p2[0],
-            // resultLine.p2[1]);
             if (ransacresult && (resultLine.t2 != 0.f)) {  // check t2 but should be fixed by slope constraint anyway
                 // count the inliers
                 int inliers = 0;
@@ -374,101 +374,51 @@ float Tfidf::PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b) {
  * L4:     |   2   |   6   |   10  |      <- 4 block groupings, offset by 2
  * L4:   |   1   |   5   |   9   |        <- 4 block groupings, offset by 1
  * L4: |   0   |   4   |   8   |   12  |  <- 4 block groupings
- * L3:     |     |     |     |     |      <- 3 block groupings, offset by 2
- * L3:   |     |     |     |     |     |  <- 3 block groupings, offset by 1
- * L3: |     |     |     |     |     |    <- 3 block groupings
+ * L3:     |  15 |  18 |  21 |  24 |      <- 3 block groupings, offset by 2
+ * L3:   |  14 |  17 |  20 |  23 |  26 |  <- 3 block groupings, offset by 1
+ * L3: |  13 |  16 |  19 |  22 |  25 |    <- 3 block groupings
  * L2:   |   |   |   |   |   |   |   |    <- 2 block groupings, offset by 1
  * L2: |   |   |   |   |   |   |   |   |  <- 2 block groupings
  * L1: | | | | | | | | | | | | | | | | |
  */
 
-float Tfidf::spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
+float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
                                  std::vector<std::vector<float>> query_pixLoc) {
 
     // each element of outside vector contains the tf for a pixel subset
-    std::vector<Eigen::VectorXf> match_tf_subL1;
     std::vector<Eigen::VectorXf> query_tf_subL1;
-    std::vector<int> match_ndL1;
-    std::vector<int> query_ndL1;
 
     int xmin     = 0;
     int stepsize = 20;
 
-    // To make sure all of the features have been allocated to a x pos block
-    int countCheckMatch = 0;
-    int countCheckQuery = 0;
-    int sumMatch_ndL1   = 0;
-    int sumQuery_ndL1   = 0;
-
     // Splitting up the x positions into blocks the size of 'stepsize'.
     while ((xmin + stepsize) <= IMAGE_WIDTH) {
-        match_tf_subL1.push_back(Eigen::VectorXf::Zero(match_pixLoc.size()));
-        query_tf_subL1.push_back(Eigen::VectorXf::Zero(match_pixLoc.size()));
-        match_ndL1.push_back(0);
-        query_ndL1.push_back(0);
+        query_tf_subL1.push_back(Eigen::VectorXf::Zero(query_pixLoc.size()));
 
-        for (int i = 0; i < match_pixLoc.size(); ++i) {  // steps through each feature
-            for (int j = 0; j < match_pixLoc[i].size(); ++j) {
-                // store all features with an x position within each block
-                if ((match_pixLoc[i][j] >= (float) xmin) && (match_pixLoc[i][j] < (float) (xmin + stepsize))) {
-                    match_tf_subL1.back()[i] += 1.0;
-                    match_ndL1.back()++;
-                }
-
-                if (xmin < 1) countCheckMatch++;  // First time through, count up number of feature occurances
-            }
+        for (int i = 0; i < query_pixLoc.size(); ++i) {  // steps through each feature
             for (int j = 0; j < query_pixLoc[i].size(); ++j) {
                 if ((query_pixLoc[i][j] >= (float) xmin) && (query_pixLoc[i][j] < (float) (xmin + stepsize))) {
                     query_tf_subL1.back()[i] += 1.0;
-                    query_ndL1.back()++;
                 }
-
-                if (xmin < 1) countCheckQuery++;  // First time through, count up number of feature occurances
             }
         }
         xmin += stepsize;
     }
 
-    // Sum checking
-    sumQuery_ndL1 = std::accumulate(query_ndL1.begin(), query_ndL1.end(), 0);
-    sumMatch_ndL1 = std::accumulate(match_ndL1.begin(), match_ndL1.end(), 0);
-    if ((sumQuery_ndL1 == countCheckQuery) && (sumMatch_ndL1 == countCheckMatch)) {
-        std::cout << " (chk1=S";
-    }
-    else {
-        std::cout << " Sum check FAILED!!! sumQuery_ndL1 = " << sumQuery_ndL1
-                  << ", countCheckQuery = " << countCheckQuery << ", sumMatch_ndL1 = " << sumMatch_ndL1
-                  << ", countCheckMatch = " << countCheckMatch;
-    }
-
-    // Combining the base of the pyramid blocks to create the high layers (4, 3, then 2)
-    std::vector<Eigen::VectorXf> match_tf_subL432;
-    std::vector<Eigen::VectorXf> query_tf_subL432;
-    std::vector<int> match_nd432;
-    std::vector<int> query_nd432;
+    // Combining the base of the pyramid blocks to create the high layers (4 then 3)
+    std::vector<Eigen::VectorXf> query_tf_subL43;
     Eigen::VectorXf tf_sub_temp;
-    int n_subset = query_ndL1.size();  // total number of L1 blocks
     int i_subset = 0;
     xmin         = 0;  // resetting
     int L_max    = 4;
-    int L_min    = 4;
+    int L_min    = 3;
     for (int L = L_max; L >= L_min; --L) {
         while ((xmin + stepsize * L) <= IMAGE_WIDTH) {
-            // for the match image first
-            tf_sub_temp = match_tf_subL1[i_subset];
-            for (int i = 1; i < L; ++i) {
-                tf_sub_temp += match_tf_subL1[i_subset + i];
-            }
-            match_tf_subL432.push_back(tf_sub_temp);
-
-            // then for the query image
             tf_sub_temp = query_tf_subL1[i_subset];
             for (int i = 1; i < L; ++i) {
                 tf_sub_temp += query_tf_subL1[i_subset + i];
             }
-            query_tf_subL432.push_back(tf_sub_temp);
-
-
+            query_tf_subL43.push_back(tf_sub_temp);
             xmin += stepsize;
             i_subset++;
         }
@@ -476,18 +426,7 @@ float Tfidf::spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
         i_subset = 0;
     }
 
-    // another sum check
-    // For L=4:13, L=3:14, L=2:15
-    if ((match_tf_subL432.size() == 13) && (query_tf_subL432.size() == 13)) {
-        std::cout << ", chk2=S)";
-    }
-    else {
-        std::cout << "sum check2 FAILED!!! match_tf_subL432 size = " << match_tf_subL432.size()
-                  << ", query_tf_subL432 size = " << query_tf_subL432.size();
-    }
-
     // Comparing the blocks on level 4
-    std::cout << "\n\n Spatial Pyramid Scores: ";
     int L = 4;
     Eigen::VectorXf match_tfidf_subL4;
     Eigen::VectorXf query_tfidf_subL4;
@@ -508,20 +447,125 @@ float Tfidf::spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
 
         for (int j = 0; j < n_blocks; ++j) {
             match_tfidf_subL4 =
-                (match_tf_subL432[i_match + j * L] / match_tf_subL432[i_match + j * L].sum()).array() * idf.array();
+                (match_tf_subL43[i_match + j * L] / match_tf_subL43[i_match + j * L].sum()).array() * idf.array();
             query_tfidf_subL4 =
-                (query_tf_subL432[i_query + j * L] / query_tf_subL432[i_query + j * L].sum()).array() * idf.array();
+                (query_tf_subL43[i_query + j * L] / query_tf_subL43[i_query + j * L].sum()).array() * idf.array();
             SPScore += cosineScore(query_tfidf_subL4, match_tfidf_subL4);
         }
         SPScore /= n_blocks;  // Average
         if (SPScore > maxSPScore) {
             maxSPScore = SPScore;
         }
-        printf("%.3f ", SPScore);
         SPScore = 0;
         i_match++;
     }
-    std::cout << std::endl << std::endl;
+
+    // Comaring the level 3 blocks from query, with the level 4 blocks from match
+    Eigen::VectorXf query_tfidf_subL3;
+    i_match  = 0;
+    i_query  = 20;
+    n_blocks = 3;
+    for (int i = 1; i <= 11; ++i) {
+        if (i == 4) {
+            n_blocks = 4;
+        }
+        else if (i == 9) {
+            n_blocks = 3;
+            i_query  = 15;
+            i_match  = 4;
+        }
+
+        for (int j = 0; j < n_blocks; ++j) {
+            match_tfidf_subL4 =
+                (match_tf_subL43[i_match + j * L] / match_tf_subL43[i_match + j * L].sum()).array() * idf.array();
+            query_tfidf_subL3 =
+                (query_tf_subL43[i_query + j * (L - 1)] / query_tf_subL43[i_query + j * (L - 1)].sum()).array()
+                * idf.array();
+            SPScore += cosineScore(query_tfidf_subL3, match_tfidf_subL4);
+        }
+        SPScore /= n_blocks;  // Average
+        if (SPScore > maxSPScore) {
+            maxSPScore = SPScore;
+        }
+        SPScore = 0;
+        i_query--;
+    }
+
+    // Comaring the level 4 blocks from query, with the level 3 blocks from match
+    Eigen::VectorXf match_tfidf_subL3;
+    i_match  = 20;
+    i_query  = 0;
+    n_blocks = 3;
+    for (int i = 1; i <= 11; ++i) {
+        if (i == 4) {
+            n_blocks = 4;
+        }
+        else if (i == 9) {
+            n_blocks = 3;
+            i_match  = 15;
+            i_query  = 4;
+        }
+
+        for (int j = 0; j < n_blocks; ++j) {
+            match_tfidf_subL3 =
+                (match_tf_subL43[i_match + j * (L - 1)] / match_tf_subL43[i_match + j * (L - 1)].sum()).array()
+                * idf.array();
+            query_tfidf_subL4 =
+                (query_tf_subL43[i_query + j * L] / query_tf_subL43[i_query + j * L].sum()).array() * idf.array();
+            SPScore += cosineScore(query_tfidf_subL4, match_tfidf_subL3);
+        }
+        SPScore /= n_blocks;  // Average
+        if (SPScore > maxSPScore) {
+            maxSPScore = SPScore;
+        }
+        SPScore = 0;
+        i_match--;
+    }
+    printf(" (maxSPScore: %0.2f)", maxSPScore);
 
     return maxSPScore;
+}
+
+std::vector<Eigen::VectorXf> Tfidf::spatialPyramidMatchPreCalc(std::vector<std::vector<float>> match_pixLoc) {
+    // each element of outside vector contains the tf for a pixel subset
+    std::vector<Eigen::VectorXf> match_tf_subL1;
+    int xmin     = 0;
+    int stepsize = 20;
+
+    // Splitting up the x positions into blocks the size of 'stepsize'.
+    while ((xmin + stepsize) <= IMAGE_WIDTH) {
+        match_tf_subL1.push_back(Eigen::VectorXf::Zero(match_pixLoc.size()));
+
+        for (int i = 0; i < match_pixLoc.size(); ++i) {  // steps through each feature
+            for (int j = 0; j < match_pixLoc[i].size(); ++j) {
+                // store all features with an x position within each block
+                if ((match_pixLoc[i][j] >= (float) xmin) && (match_pixLoc[i][j] < (float) (xmin + stepsize))) {
+                    match_tf_subL1.back()[i] += 1.0;
+                }
+            }
+        }
+        xmin += stepsize;
+    }
+
+    // Combining the base of the pyramid blocks to create the high layers (4 then 3)
+    std::vector<Eigen::VectorXf> match_tf_subL43;
+    Eigen::VectorXf tf_sub_temp;
+    int i_subset = 0;
+    xmin         = 0;  // resetting
+    int L_max    = 4;
+    int L_min    = 3;
+    for (int L = L_max; L >= L_min; --L) {
+        while ((xmin + stepsize * L) <= IMAGE_WIDTH) {
+            tf_sub_temp = match_tf_subL1[i_subset];
+            for (int i = 1; i < L; ++i) {
+                tf_sub_temp += match_tf_subL1[i_subset + i];
+            }
+            match_tf_subL43.push_back(tf_sub_temp);
+            xmin += stepsize;
+            i_subset++;
+        }
+        xmin     = 0;
+        i_subset = 0;
+    }
+    return match_tf_subL43;
 }

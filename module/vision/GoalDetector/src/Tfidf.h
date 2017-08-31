@@ -62,8 +62,9 @@ private:
 
     float cosineScore(Eigen::VectorXf a, Eigen::VectorXf b);
     float PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b);
-    float spatialPyramidCheck(std::vector<std::vector<float>> match_pixLoc,
+    float spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tf_subL43,
                               std::vector<std::vector<float>> query_pixLoc);
+    std::vector<Eigen::VectorXf> spatialPyramidMatchPreCalc(std::vector<std::vector<float>> match_pixLoc);
 
 
     Vocab vocab;
@@ -77,5 +78,5 @@ private:
     Eigen::VectorXf idf;  // corpus inverse document frequency
 
     float VALID_COSINE_SCORE = 0.40;  // 0.42f
-    int VALID_INLIERS        = 0;     // 40 // 50
+    int VALID_INLIERS        = 20;    // 40 // 50
 };
