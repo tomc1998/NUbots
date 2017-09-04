@@ -437,31 +437,6 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL43
     auto timer2  = std::chrono::duration_cast<std::chrono::microseconds>(timer2e - timer2s);
     std::cout << ", t2: " << timer2.count() << "us";
 
-    /*
-    auto timer1As = std::chrono::system_clock::now(); // 'A' stands for 2nd variant of timer1 block of code
-    // each element of outside vector contains the tf for a pixel subset
-    std::vector<Eigen::VectorXf> query_tfidf_subL3;
-    // Splitting up the x positions into blocks the size of 'stepsize x 3'.
-    while ((xmin + stepsize*3) <= IMAGE_WIDTH) {
-        query_tfidf_subL3.push_back(Eigen::VectorXf::Zero(query_pixLoc.size()));
-
-        for (int i = 0; i < query_pixLoc.size(); ++i) {  // steps through each feature
-            for (int j = 0; j < query_pixLoc[i].size(); ++j) {
-                if ((query_pixLoc[i][j] >= (float) xmin) && (query_pixLoc[i][j] < (float) (xmin + stepsize*3))) {
-                    query_tfidf_subL3.back()[i] += 1.0;
-                }
-            }
-
-            // Applying weighting
-            query_tfidf_subL3.back() = (query_tfidf_subL3.back() / query_tfidf_subL3.back().sum()).array() *
-    idf.array());
-        }
-        xmin += stepsize;
-    }
-    auto timer1Ae = std::chrono::system_clock::now();
-    auto timerA1  = std::chrono::duration_cast<std::chrono::microseconds>(timer1Ae - timer1As);
-    std::cout << ", tA1: " << timerA1.count() << "us";
-    */
     // Comparing the blocks on level 3
     auto timer3s     = std::chrono::system_clock::now();
     int L            = 3;
