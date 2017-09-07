@@ -29,6 +29,10 @@ public:
     void setValidCosineScore(float x);
     void setValidInliers(int x);
 
+    void addToSPAverage(float time);
+    void addToRANSACAverage(float time);
+    void printRANSACandSPAverages();
+
     void loadVocab(std::string vocabFile);
     void loadMap(std::string mapFile);
     void clearMap();
@@ -79,4 +83,9 @@ private:
 
     float VALID_COSINE_SCORE = 0.40;  // 0.42f
     int VALID_INLIERS        = 20;    // 40 // 50
+
+    float SPAverageTime;
+    float RANSACAverageTime;
+    float SPAverageN     = 0.0f;
+    float RANSACAverageN = 0.0f;
 };

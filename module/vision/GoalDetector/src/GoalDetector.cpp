@@ -159,7 +159,7 @@ namespace vision {
                 myfile2.open("/home/vagrant/NUbots/module/vision/GoalDetector/data/CutoffTable.txt");
             });
 
-        on<Every<1000, std::chrono::milliseconds>>().then([this] {
+        on<Every<100, std::chrono::milliseconds>>().then([this] {
 
             /* This is all stuff to make SurfDetection work in isolation. Will need to be deleted when integrated with
              * GoalMatching.cpp */
@@ -309,7 +309,8 @@ namespace vision {
                     CutoffTableColCounter++;
                     imageNum = 22;          // Reset imageNum
                     if (awayImages == 0) {  // Transition to next cosine cutoff
-                        awayImages = 1;     // Toggling awayImages
+                        goalMatcher.printRANSACandSPAverages();
+                        awayImages = 1;  // Toggling awayImages
                         goalMatcher.setValidCosineScore(goalMatcher.getValidCosineScore()
                                                         + 0.1);  // Increasing Valid Cosine Score by 0.1
                         printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());

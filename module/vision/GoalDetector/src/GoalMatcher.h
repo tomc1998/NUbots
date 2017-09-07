@@ -32,6 +32,7 @@ public:
     int getValidInliers();
     void setValidCosineScore(float x);
     void setValidInliers(int x);
+    void printRANSACandSPAverages();
 
     // Tries to classify which end the visible goals are at, based on background landmarks, or learns
     // landmarks if in first ready state for the half

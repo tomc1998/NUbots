@@ -45,6 +45,10 @@ void GoalMatcher::setValidInliers(int x) {
     tfidf.setValidInliers(x);
 }
 
+void GoalMatcher::printRANSACandSPAverages() {
+    tfidf.printRANSACandSPAverages();
+}
+
 int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::ClassifiedImage> frame,
                                   std::unique_ptr<std::vector<Ipoint>>& landmarks,
                                   std::unique_ptr<Eigen::VectorXf>& landmark_tf,

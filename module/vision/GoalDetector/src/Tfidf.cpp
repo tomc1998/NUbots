@@ -290,6 +290,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             float spatialPyramidScore = spatialPyramidCheck(match_tfidf_subL432, query_pixLoc);
             auto SPtime_e             = std::chrono::system_clock::now();
             auto SPtimer              = std::chrono::duration_cast<std::chrono::microseconds>(SPtime_e - SPtimer_s);
+            addToSPAverage((float) SPtimer.count());
             std::cout << ", SPtimer: " << SPtimer.count() << " us";
 
             auto RANSACtimer_s = std::chrono::system_clock::now();
@@ -323,6 +324,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
 
             auto RANSACtimer_e = std::chrono::system_clock::now();
             auto RANSACtimer   = std::chrono::duration_cast<std::chrono::microseconds>(RANSACtimer_e - RANSACtimer_s);
+            addToRANSACAverage((float) RANSACtimer.count());
             std::cout << ", RANSACtimer: " << RANSACtimer.count() << " us";
 
             if (ransacresult && (resultLine.t2 != 0.f)) {  // check t2 but should be fixed by slope constraint anyway
@@ -598,4 +600,29 @@ std::vector<Eigen::VectorXf> Tfidf::spatialPyramidMatchPreCalc(std::vector<std::
         std::cout << "ERROR!!! match_tfidf_subL432 is not expected size" << std::endl;
     }
     return match_tfidf_subL432;
+}
+
+void Tfidf::addToSPAverage(float time) {
+    SPAverageN += 1.0f;
+    if (SPAverageN < 1.5f) {
+        SPAverageTime = time;
+    }
+    else {
+        SPAverageTime = ((SPAverageN - 1.0f) / SPAverageN) * SPAverageTime + time / SPAverageN;
+    }
+}
+
+void Tfidf::addToRANSACAverage(float time) {
+    RANSACAverageN += 1.0f;
+    if (RANSACAverageN < 1.5f) {
+        RANSACAverageTime = time;
+    }
+    else {
+        RANSACAverageTime = ((RANSACAverageN - 1.0f) / RANSACAverageN) * RANSACAverageTime + time / RANSACAverageN;
+    }
+}
+
+void Tfidf::printRANSACandSPAverages() {
+    float ratio = SPAverageTime / RANSACAverageTime;
+    printf("SPAverageTime: %0.0f, RANSACAverageTime: %0.0f (x%0.1f)\n", SPAverageTime, RANSACAverageTime, ratio);
 }
