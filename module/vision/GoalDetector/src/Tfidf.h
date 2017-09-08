@@ -82,7 +82,7 @@ private:
     Eigen::VectorXf idf;  // corpus inverse document frequency
 
     float VALID_COSINE_SCORE = 0.40;  // 0.42f
-    int VALID_INLIERS        = 20;    // 40 // 50
+    int VALID_INLIERS        = 30;    // 40 // 50
 
     float SPAverageTime;
     float RANSACAverageTime;
