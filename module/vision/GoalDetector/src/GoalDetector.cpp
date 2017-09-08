@@ -154,9 +154,6 @@ namespace vision {
                 goalMatcher.loadVocab(VocabFileName);
                 printf("\n\n\n");
                 // goalMatcher.loadMap(MapFileName);
-                // myfile.open("/home/vagrant/NUbots/module/vision/GoalDetector/data/resultTable.txt");
-                // //,std::ios_base::app); This last bit adds text to end of file
-                myfile2.open("/home/vagrant/NUbots/module/vision/GoalDetector/data/CutoffTable.txt");
             });
 
         on<Every<100, std::chrono::milliseconds>>().then([this] {
@@ -167,14 +164,6 @@ namespace vision {
             uint8_t Y                                 = 0;
             int Yi                                    = 0;
             NUClear::clock::time_point fake_timestamp = NUClear::clock::now();
-
-
-            if (imageNum == 1) {
-                myfile2 << ",,Cosine Score\n"
-                        << ",0.2,,0.3,,0.4,,0.5,,0.6,\n"
-                        << "Min Inlier,AWAY,HOME,AWAY,HOME,AWAY,HOME,AWAY,HOME,AWAY,HOME\n"
-                        << goalMatcher.getValidInliers() << ",";
-            }
 
             if (imageNum <= 21) {
 
@@ -236,48 +225,6 @@ namespace vision {
                     printf("--------------------------------------------------------------------------------------\n");
                 }
 
-
-                // ofstream myfile;
-                // myfile.open("/home/Desktop/resultTable.txt");
-                /*
-                myfile << ",Best,,,\n";
-                myfile << "Image,Match Scores,AWAY/HOME,Inliers,Outliers,Ratio,Correct\n";
-                for (int m = 0; m < 33; m++) {
-                    myfile << "#" << m + 1 << ",";
-                    for (int mi = 0; mi < 8; mi++) {
-                        if ((resultTable(m * 8 + mi, 1) < 0.1) && (resultTable(m * 8 + mi, 1) > -0.1)) {
-                            myfile << "-,-,-,-,,\n";
-                        }
-                        else {
-                            myfile << resultTable(m * 8 + mi, 0) << ",";
-                            if (resultTable(m * 8 + mi, 1) > 0.5)
-                                myfile << "AWAY,";
-                            else
-                                myfile << "HOME,";
-                            myfile << resultTable(m * 8 + mi, 2) << "," << resultTable(m * 8 + mi, 3);
-                            if ((mi == 0)
-                                && ((resultTable(m * 8 + 3, 1) > 0.1) || (resultTable(m * 8 + 3, 1) < -0.1))) {
-                                myfile << "," << resultTable(m * 8, 4) << "/" << resultTable(m * 8, 5) << ",";
-                                float awayGoalVotes = resultTable(m * 8, 4) - resultTable(m * 8, 5);
-                                if ((awayImages == 1) && (awayGoalVotes < -1.9))
-                                    myfile << "WRONG\n";  // WRONG for AWAY dataset
-                                else if ((awayImages == 1) && (awayGoalVotes > 1.9))
-                                    myfile << "CORRECT\n";
-                                else if ((awayImages == 0) && (awayGoalVotes < -1.9))
-                                    myfile << "CORRECT\n";
-                                else if ((awayImages == 0) && (awayGoalVotes > 1.9))
-                                    myfile << "WRONG\n";
-                                else
-                                    myfile << "-\n";
-                            }
-                            else
-                                myfile << ",,\n";
-                        }
-                        if (mi < 7) myfile << ",";
-                    }
-                }
-                // myfile.close();
-                */
                 /******* CORRECT/WRONG COUNTER **********/
                 int correctCount = 0;
                 int wrongCount   = 0;
@@ -301,45 +248,21 @@ namespace vision {
                 int CorrectPercent = (int) (correctCount / imageSetSize * 100 + 0.5);
                 int WrongPercent   = (int) (wrongCount / imageSetSize * 100 + 0.5);
                 int UnsurePercent  = (int) ((imageSetSize - correctCount - wrongCount) / imageSetSize * 100 + 0.5);
-                printf(" (%d)\n\n", CorrectPercent);
-                // myfile << correctCount;
-                myfile2 << CorrectPercent << "/" << WrongPercent << "/" << UnsurePercent;
-                if (CutoffTableColCounter < (CutoffTableColMax - 1)) {  // Not yet the end of a row
-                    myfile2 << ",";
-                    CutoffTableColCounter++;
-                    imageNum = 22;          // Reset imageNum
-                    if (awayImages == 0) {  // Transition to next cosine cutoff
-                        goalMatcher.printRANSACandSPAverages();
-                        awayImages = 1;  // Toggling awayImages
-                        goalMatcher.setValidCosineScore(goalMatcher.getValidCosineScore()
-                                                        + 0.1);  // Increasing Valid Cosine Score by 0.1
-                        printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
-                    }
-                    else {
-                        awayImages = 0;
-                        printf("ValidCosineScore stays at: %.2f\n", goalMatcher.getValidCosineScore());
-                    }
+                printf(" (%d/%d/%d)\n\n", CorrectPercent, WrongPercent, UnsurePercent);
+
+                if (awayImages == 1) {
+                    awayImages  = 0;
+                    imageNum    = 22;                                // Reset imageNum
+                    resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);  // Reset resultTable
                 }
-                else if (CutoffTableRowCounter < (CutoffTableRowMax - 1)) {  // End of row, but not of table
-                    imageNum              = 22;
-                    CutoffTableColCounter = 0;
-                    CutoffTableRowCounter++;
-                    goalMatcher.setValidInliers(goalMatcher.getValidInliers() + 10);
-                    goalMatcher.setValidCosineScore(0.2);
-                    myfile2 << endl << goalMatcher.getValidInliers() << ",";
-                    awayImages = 1;
-                    printf("ValidCosineScore is now: %.2f\n", goalMatcher.getValidCosineScore());
-                }
-                else {  // End of row and table
+                else {
+                    goalMatcher.printRANSACandSPAverages();
                     imageNum++;
                 }
-                resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);
             }
             else if (imageNum == 56) {
                 printf("\nFINISHED...PRESS CTRL + C\n");
                 imageNum++;
-                // myfile.close();
-                myfile2.close();
             }
         });
 
