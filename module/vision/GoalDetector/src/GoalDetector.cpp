@@ -231,8 +231,8 @@ namespace vision {
                 for (int m = 0; m < 33; m++) {
                     float awayGoalVotes = resultTable(m * 8, 4) - resultTable(m * 8, 5);
                     printf("%.3f\n", awayGoalVotes);
-                    if ((resultTable(m * 8, 4) > 1.99)
-                        || (resultTable(m * 8, 5) > 1.99)) {  // Checks if enough matches are available
+                    if ((resultTable(m * 8, 4) + resultTable(m * 8, 5))
+                        > 2.99) {  // Checks if enough matches are available
                         if (((awayImages == 1) && (awayGoalVotes > 1.99))
                             || ((awayImages == 0) && (awayGoalVotes < -1.99))) {
                             correctCount++;
