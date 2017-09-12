@@ -165,7 +165,7 @@ namespace vision {
             int Yi                                    = 0;
             NUClear::clock::time_point fake_timestamp = NUClear::clock::now();
 
-            if (imageNum <= 21) {
+            if (imageNum <= 18) {
 
                 std::unique_ptr<Field> field = std::make_unique<Field>();
 
@@ -183,13 +183,13 @@ namespace vision {
                 emit(std::move(field));
                 emit(std::move(frame));
             }
-            else if (imageNum <= 54) {
+            else if (imageNum <= 51) {
                 goalMatcher.setWasInitial(false);
                 std::unique_ptr<Field> field = std::make_unique<Field>();
 
                 double d;
 
-                auto test_image = std::make_shared<Image>(testImageGen(imageNum - 21, field, &d, awayImages));
+                auto test_image = std::make_shared<Image>(testImageGen(imageNum - 18, field, &d, awayImages));
 
                 auto frame            = std::make_unique<ClassifiedImage>();  // Create an empty ClassifiedImage object
                 frame->dimensions     = test_image->dimensions;
@@ -197,13 +197,13 @@ namespace vision {
                 frame->horizon.distance = d;
                 frame->image            = std::move(test_image);
 
-                printf("Producing Test image #%d\n", imageNum - 21);
+                printf("Producing Test image #%d\n", imageNum - 18);
                 imageNum++;
                 emit(std::move(field));
                 emit(std::move(frame));
             }
 
-            else if (imageNum == 55) {
+            else if (imageNum == 52) {
                 printf("\t\tBest\n");
                 printf("Image\tMatch Scores\t AWAY/HOME\tInliers   Outliers\n");
                 printf("=====================================================================================\n");
@@ -252,7 +252,7 @@ namespace vision {
 
                 if (awayImages == 1) {
                     awayImages  = 0;
-                    imageNum    = 22;                                // Reset imageNum
+                    imageNum    = 19;                                // Reset imageNum
                     resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);  // Reset resultTable
                 }
                 else {
@@ -260,7 +260,7 @@ namespace vision {
                     imageNum++;
                 }
             }
-            else if (imageNum == 56) {
+            else if (imageNum == 53) {
                 printf("\nFINISHED...PRESS CTRL + C\n");
                 imageNum++;
             }
@@ -790,7 +790,7 @@ namespace vision {
                      * SURF Landmarks used to classify the goal area                   *
                      *******************************************************************/
                     float awayGoalProb = 0.5;
-                    if (imageNum <= 22) {
+                    if (imageNum <= 19) {
                         goalMatcher.process(rawImage,
                                             landmarks,
                                             landmark_tf,
@@ -801,11 +801,11 @@ namespace vision {
                                             &resultTable);
                     }
                     else {
-                        printf("resultTable(%d:%d,:)\n", (imageNum - 23) * 8, (imageNum - 23) * 8 + 7);
-                        Eigen::MatrixXd temp = resultTable.middleRows((imageNum - 23) * 8, 8);
+                        printf("resultTable(%d:%d,:)\n", (imageNum - 20) * 8, (imageNum - 20) * 8 + 7);
+                        Eigen::MatrixXd temp = resultTable.middleRows((imageNum - 20) * 8, 8);
                         goalMatcher.process(
                             rawImage, landmarks, landmark_tf, landmark_pixLoc, field, awayGoalProb, MapFileName, &temp);
-                        resultTable.middleRows((imageNum - 23) * 8, 8) = temp;
+                        resultTable.middleRows((imageNum - 20) * 8, 8) = temp;
                     }
                     printf("awayGoalProb = %.2f\n", awayGoalProb);
                     printf("imageNum = %d\n", imageNum);

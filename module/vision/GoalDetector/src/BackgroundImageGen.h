@@ -78,89 +78,68 @@ Image backgroundImageGen(uint8_t imageNum, std::unique_ptr<message::localisation
         field->position[2] = 0;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/image09.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 10) {
-        *d                 = 64.0;
-        field->position[0] = 0;  // x position
-        field->position[1] = 0;  // y position
-        field->position[2] = 0;  // x component heading
-        raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/image10.png", CV_LOAD_IMAGE_GRAYSCALE);
-    }
-    else if (imageNum == 11) {
-        *d                 = 64.0;
-        field->position[0] = 0;  // x position
-        field->position[1] = 0;  // y position
-        field->position[2] = 0;  // x component heading
-        raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/image11.png", CV_LOAD_IMAGE_GRAYSCALE);
-    }
-    else if (imageNum == 12) {
-        *d                 = 64.0;
-        field->position[0] = 0;  // x position
-        field->position[1] = 0;  // y position
-        field->position[2] = 0;  // x component heading
-        raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/image12.png", CV_LOAD_IMAGE_GRAYSCALE);
-    }
 
     /*******************************************************************/
     /************************* OWN GOAL BACKGROUND IMAGES **************/
     /*******************************************************************/
 
-    else if (imageNum == 13) {
+    else if (imageNum == 10) {
         *d                 = 30.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back01.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 14) {
+    else if (imageNum == 11) {
         *d                 = 30.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back02.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 15) {
+    else if (imageNum == 12) {
         *d                 = 35.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back03.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 16) {
+    else if (imageNum == 13) {
         *d                 = 37.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back04.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 17) {
+    else if (imageNum == 14) {
         *d                 = 28.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back05.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 18) {
+    else if (imageNum == 15) {
         *d                 = 22.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back06.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 19) {
+    else if (imageNum == 16) {
         *d                 = 43.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back07.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 20) {
+    else if (imageNum == 17) {
         *d                 = 30.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
         field->position[2] = M_PI;  // x component heading
         raw_image = imread("/home/vagrant/NUbots/module/vision/GoalDetector/data/back08.png", CV_LOAD_IMAGE_GRAYSCALE);
     }
-    else if (imageNum == 21) {
+    else if (imageNum == 18) {
         *d                 = 39.0;
         field->position[0] = 0;     // x position
         field->position[1] = 0;     // y position
