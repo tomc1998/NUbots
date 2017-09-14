@@ -228,6 +228,7 @@ namespace vision {
                 /******* CORRECT/WRONG COUNTER **********/
                 int correctCount = 0;
                 int wrongCount   = 0;
+                int unsureCount  = 0;
                 for (int m = 0; m < 33; m++) {
                     float awayGoalVotes = resultTable(m * 8, 4) - resultTable(m * 8, 5);
                     printf("%.3f\n", awayGoalVotes);
@@ -243,12 +244,8 @@ namespace vision {
                         }
                     }
                 }
-
-                printf("\nCorrect Count = %d", correctCount);
-                int CorrectPercent = (int) (correctCount / imageSetSize * 100 + 0.5);
-                int WrongPercent   = (int) (wrongCount / imageSetSize * 100 + 0.5);
-                int UnsurePercent  = (int) ((imageSetSize - correctCount - wrongCount) / imageSetSize * 100 + 0.5);
-                printf(" (%d/%d/%d)\n\n", CorrectPercent, WrongPercent, UnsurePercent);
+                unsureCount = imageSetSize - correctCount - wrongCount;
+                printf("\nPerformance = %d/%d/%d\n\n", correctCount, wrongCount, unsureCount);
 
                 if (awayImages == 1) {
                     awayImages  = 0;

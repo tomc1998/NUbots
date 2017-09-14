@@ -352,7 +352,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                 addToSPAverage((float) SPtimer.count());
                 addToRANSACAverage((float) RANSACtimer.count());
             }
-
+            /*
             if (ransacresult && (resultLine.t2 != 0.f)) {  // check t2 but should be fixed by slope constraint anyway
                 // count the inliers
                 int inliers = 0;
@@ -387,6 +387,21 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             }
             else {
                 printf("SKIPPED INLIER COUNT SINCE ransacresult = %d\n", ransacresult);
+                num--;
+                if ((*resultTable)(counter, 1) > 0.5) (*resultTable)(0, 4)  = (*resultTable)(0, 4) - 1.0;
+                if ((*resultTable)(counter, 1) < -0.5) (*resultTable)(0, 5) = (*resultTable)(0, 5) - 1.0;
+            }
+            */
+
+            // Spatial Pyramid only method
+            (*resultTable)(counter, 2) = 0.0;  // just to prevent crashing
+            (*resultTable)(counter, 3) = 0.1;
+            if (spatialPyramidScore >= 0.30f) {
+                printf("Location is valid\n");
+                matchesPrim->push(mapEntry);
+            }
+            else {
+                printf("Location INVALID\n");
                 num--;
                 if ((*resultTable)(counter, 1) > 0.5) (*resultTable)(0, 4)  = (*resultTable)(0, 4) - 1.0;
                 if ((*resultTable)(counter, 1) < -0.5) (*resultTable)(0, 5) = (*resultTable)(0, 5) - 1.0;

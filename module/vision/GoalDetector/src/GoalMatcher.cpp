@@ -103,7 +103,7 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
         }
     }
 
-
+    /*
     // Running Spatial Pyramid to attempt to recover some invalidated image matches
     if ((num <= MIN_CONSENSUS_DIFF)
         || ((away_goal_votes < MIN_CONSENSUS_DIFF) && (away_goal_votes > -MIN_CONSENSUS_DIFF))) {
@@ -129,7 +129,7 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
             i++;
         }
     }
-
+    */
 
     // Now look for a consensus position
     if ((away_goal_votes >= MIN_CONSENSUS_DIFF) && (num > MIN_CONSENSUS_DIFF)) {
