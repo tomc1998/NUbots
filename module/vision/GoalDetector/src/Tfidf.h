@@ -49,7 +49,8 @@ public:
     //! Faster version if landmarks have already been mapped to words (with the same vocab file)
     void searchDocument(Eigen::VectorXf tf_query,
                         std::vector<std::vector<float>> query_pixLoc,  // pixel locations of the words
-                        std::unique_ptr<std::priority_queue<MapEntry>>& matches,
+                        std::unique_ptr<std::priority_queue<MapEntry>>& matchesPrim,
+                        std::unique_ptr<std::priority_queue<MapEntry>>& matchesSec,
                         unsigned int* seed,
                         int n,
                         Eigen::MatrixXd* resultTable);
@@ -67,8 +68,9 @@ private:
     float cosineScore(Eigen::VectorXf a, Eigen::VectorXf b);
     float PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b);
     float spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL43,
-                              std::vector<std::vector<float>> query_pixLoc);
+                              std::vector<Eigen::VectorXf> query_tfidf_subL3);
     std::vector<Eigen::VectorXf> spatialPyramidMatchPreCalc(std::vector<std::vector<float>> match_pixLoc);
+    std::vector<Eigen::VectorXf> spatialPyramidQueryCalc(std::vector<std::vector<float>> query_pixLoc);
 
 
     Vocab vocab;
@@ -81,8 +83,8 @@ private:
     std::vector<MapEntry> map;
     Eigen::VectorXf idf;  // corpus inverse document frequency
 
-    float VALID_COSINE_SCORE = 0.40;  // 0.42f
-    int VALID_INLIERS        = 30;    // 40 // 50
+    float VALID_COSINE_SCORE = 0.40f;  // 0.42f
+    int VALID_INLIERS        = 40;     // 40 // 50
 
     float SPAverageTime;
     float RANSACAverageTime;

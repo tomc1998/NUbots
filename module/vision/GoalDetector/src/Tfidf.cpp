@@ -164,7 +164,8 @@ bool Tfidf::addDocumentToCorpus(MapEntry document, Eigen::VectorXf tf_doc, std::
 //! Faster version if landmarks have already been mapped to words
 void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                            std::vector<std::vector<float>> query_pixLoc,  // pixel locations of the words
-                           std::unique_ptr<std::priority_queue<MapEntry>>& matches,
+                           std::unique_ptr<std::priority_queue<MapEntry>>& matchesPrim,
+                           std::unique_ptr<std::priority_queue<MapEntry>>& matchesSec,
                            unsigned int* seed,
                            int num,
                            Eigen::MatrixXd* resultTable) {
@@ -263,8 +264,17 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
         printf("Complete.\n");
 
         // Now do geometric validation on the best until we have enough or the queue is empty
-        int counter = -1;
-        while (!queue.empty() && matches->size() < (unsigned int) num) {
+        int counter    = -1;
+        auto SPtimer_s = std::chrono::system_clock::now();
+        auto SPtimer_e = std::chrono::system_clock::now();
+        auto SPtimer   = std::chrono::duration_cast<std::chrono::microseconds>(SPtimer_e - SPtimer_s);
+
+        auto RANSACtimer_s = std::chrono::system_clock::now();
+        auto RANSACtimer_e = std::chrono::system_clock::now();
+        auto RANSACtimer   = std::chrono::duration_cast<std::chrono::microseconds>(RANSACtimer_e - RANSACtimer_s);
+        std::vector<Eigen::VectorXf> query_tfidf_subL3;
+
+        while (!queue.empty() && matchesPrim->size() < (unsigned int) num) {
             MapEntry mapEntry = queue.top().first;
             printf("Validating Cos: %.2f ", mapEntry.score);
             counter++;
@@ -285,15 +295,23 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             // Precomputing match info
             std::vector<Eigen::VectorXf> match_tfidf_subL432 = spatialPyramidMatchPreCalc(pixLoc);
 
-            // Spatial Pyramid geometric validation
-            auto SPtimer_s            = std::chrono::system_clock::now();
-            float spatialPyramidScore = spatialPyramidCheck(match_tfidf_subL432, query_pixLoc);
-            auto SPtime_e             = std::chrono::system_clock::now();
-            auto SPtimer              = std::chrono::duration_cast<std::chrono::microseconds>(SPtime_e - SPtimer_s);
-            addToSPAverage((float) SPtimer.count());
-            std::cout << ", SPtimer: " << SPtimer.count() << " us";
+            // Computing query info for first time only
 
-            auto RANSACtimer_s = std::chrono::system_clock::now();
+            if (counter == 0) {
+                SPtimer_s         = std::chrono::system_clock::now();
+                query_tfidf_subL3 = spatialPyramidQueryCalc(query_pixLoc);
+                SPtimer_e         = std::chrono::system_clock::now();
+                SPtimer           = std::chrono::duration_cast<std::chrono::microseconds>(SPtimer_e - SPtimer_s);
+            }
+
+            // Spatial Pyramid geometric validation
+            SPtimer_s                 = std::chrono::system_clock::now();
+            float spatialPyramidScore = spatialPyramidCheck(match_tfidf_subL432, query_tfidf_subL3);
+            SPtimer_e                 = std::chrono::system_clock::now();
+            SPtimer += std::chrono::duration_cast<std::chrono::microseconds>(SPtimer_e - SPtimer_s);
+            // SPtimer will be added to average after RANSAC
+
+            RANSACtimer_s = std::chrono::system_clock::now();
             // Do geometric validation - first build the points to run ransac
             std::vector<Point> matchpoints;
             for (int j = 0; j < T; j++) {
@@ -322,10 +340,18 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                                                             seed,
                                                             slopeConstraint);
 
-            auto RANSACtimer_e = std::chrono::system_clock::now();
-            auto RANSACtimer   = std::chrono::duration_cast<std::chrono::microseconds>(RANSACtimer_e - RANSACtimer_s);
-            addToRANSACAverage((float) RANSACtimer.count());
-            std::cout << ", RANSACtimer: " << RANSACtimer.count() << " us";
+            RANSACtimer_e = std::chrono::system_clock::now();
+            if (counter == 0) {
+                RANSACtimer = std::chrono::duration_cast<std::chrono::microseconds>(RANSACtimer_e - RANSACtimer_s);
+            }
+            else {
+                RANSACtimer += std::chrono::duration_cast<std::chrono::microseconds>(RANSACtimer_e - RANSACtimer_s);
+            }
+
+            if (queue.empty()) {
+                addToSPAverage((float) SPtimer.count());
+                addToRANSACAverage((float) RANSACtimer.count());
+            }
 
             if (ransacresult && (resultLine.t2 != 0.f)) {  // check t2 but should be fixed by slope constraint anyway
                 // count the inliers
@@ -343,7 +369,14 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
 
                 if (inliers >= VALID_INLIERS) {
                     printf("Location is valid\n");
-                    matches->push(mapEntry);
+                    matchesPrim->push(mapEntry);
+                }
+                else if (spatialPyramidScore >= 0.30f) {
+                    num--;
+                    printf("Location INVALID --savable by SpatialPyramidScore\n");
+                    matchesSec->push(mapEntry);
+                    if ((*resultTable)(counter, 1) > 0.5) (*resultTable)(0, 4)  = (*resultTable)(0, 4) - 1.0;
+                    if ((*resultTable)(counter, 1) < -0.5) (*resultTable)(0, 5) = (*resultTable)(0, 5) - 1.0;
                 }
                 else {
                     printf("Location INVALID\n");
@@ -360,9 +393,6 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
             }
         }
     }
-    // printf("\nCalculating cosines over " << map.size() << " images, RANSAC geo validation & position adjustments took
-    // ";
-    // llog(DEBUG1) << t.elapsed_us() << " us" << std::endl;
 }
 
 float Tfidf::cosineScore(Eigen::VectorXf a, Eigen::VectorXf b) {
@@ -388,56 +418,7 @@ float Tfidf::PearsonsCorrelation(Eigen::VectorXf a, Eigen::VectorXf b) {
  */
 
 float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL432,
-                                 std::vector<std::vector<float>> query_pixLoc) {
-
-
-    int xmin     = 0;
-    int stepsize = 20;
-
-    auto timer1s = std::chrono::system_clock::now();
-    // each element of outside vector contains the tf for a pixel subset
-    std::vector<Eigen::VectorXf> query_tf_subL1;
-    // Splitting up the x positions into blocks the size of 'stepsize'.
-    while ((xmin + stepsize) <= IMAGE_WIDTH) {
-        query_tf_subL1.push_back(Eigen::VectorXf::Zero(query_pixLoc.size()));
-
-        for (int i = 0; i < query_pixLoc.size(); ++i) {  // steps through each feature
-            for (int j = 0; j < query_pixLoc[i].size(); ++j) {
-                if ((query_pixLoc[i][j] >= (float) xmin) && (query_pixLoc[i][j] < (float) (xmin + stepsize))) {
-                    query_tf_subL1.back()[i] += 1.0;
-                }
-            }
-        }
-        xmin += stepsize;
-    }
-    auto timer1e = std::chrono::system_clock::now();
-    auto timer1  = std::chrono::duration_cast<std::chrono::microseconds>(timer1e - timer1s);
-    std::cout << ", t1: " << timer1.count() << "us";
-
-    // Combining the base of the pyramid blocks to create the layer 3
-    auto timer2s = std::chrono::system_clock::now();
-    std::vector<Eigen::VectorXf> query_tfidf_subL3;
-    Eigen::VectorXf tf_sub_temp;
-    int i_subset = 0;
-    xmin         = 0;  // resetting
-    int L_max    = 3;
-    int L_min    = 3;
-    for (int L = L_max; L >= L_min; --L) {
-        while ((xmin + stepsize * L) <= IMAGE_WIDTH) {
-            tf_sub_temp = query_tf_subL1[i_subset];
-            for (int i = 1; i < L; ++i) {
-                tf_sub_temp += query_tf_subL1[i_subset + i];
-            }
-            query_tfidf_subL3.push_back((tf_sub_temp / tf_sub_temp.sum()).array() * idf.array());
-            xmin += stepsize;
-            i_subset++;
-        }
-        xmin     = 0;
-        i_subset = 0;
-    }
-    auto timer2e = std::chrono::system_clock::now();
-    auto timer2  = std::chrono::duration_cast<std::chrono::microseconds>(timer2e - timer2s);
-    std::cout << ", t2: " << timer2.count() << "us";
+                                 std::vector<Eigen::VectorXf> query_tfidf_subL3) {
 
     // Comparing the blocks on level 3
     auto timer3s     = std::chrono::system_clock::now();
@@ -478,7 +459,6 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL43
     }
     auto timer3e = std::chrono::system_clock::now();
     auto timer3  = std::chrono::duration_cast<std::chrono::microseconds>(timer3e - timer3s);
-    std::cout << ", t3: " << timer3.count() << "us";
 
     // Comparing the level 3 blocks from query, with the level 4 blocks from match
     auto timer4s = std::chrono::system_clock::now();
@@ -507,7 +487,6 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL43
     }
     auto timer4e = std::chrono::system_clock::now();
     auto timer4  = std::chrono::duration_cast<std::chrono::microseconds>(timer4e - timer4s);
-    std::cout << ", t4: " << timer4.count() << "us";
 
     // Comaring the level 3 blocks from query, with the level 2 blocks from match
     auto timer5s = std::chrono::system_clock::now();
@@ -536,7 +515,6 @@ float Tfidf::spatialPyramidCheck(std::vector<Eigen::VectorXf> match_tfidf_subL43
     }
     auto timer5e = std::chrono::system_clock::now();
     auto timer5  = std::chrono::duration_cast<std::chrono::microseconds>(timer5e - timer5s);
-    std::cout << ", t5: " << timer5.count() << "us";
     printf(" (maxSPScore: %0.2f)", maxSPScore);
 
     return maxSPScore;
@@ -600,6 +578,56 @@ std::vector<Eigen::VectorXf> Tfidf::spatialPyramidMatchPreCalc(std::vector<std::
         std::cout << "ERROR!!! match_tfidf_subL432 is not expected size" << std::endl;
     }
     return match_tfidf_subL432;
+}
+
+std::vector<Eigen::VectorXf> Tfidf::spatialPyramidQueryCalc(std::vector<std::vector<float>> query_pixLoc) {
+    int xmin     = 0;
+    int stepsize = 20;
+
+    auto timer1s = std::chrono::system_clock::now();
+    // each element of outside vector contains the tf for a pixel subset
+    std::vector<Eigen::VectorXf> query_tf_subL1;
+    // Splitting up the x positions into blocks the size of 'stepsize'.
+    while ((xmin + stepsize) <= IMAGE_WIDTH) {
+        query_tf_subL1.push_back(Eigen::VectorXf::Zero(query_pixLoc.size()));
+
+        for (int i = 0; i < query_pixLoc.size(); ++i) {  // steps through each feature
+            for (int j = 0; j < query_pixLoc[i].size(); ++j) {
+                if ((query_pixLoc[i][j] >= (float) xmin) && (query_pixLoc[i][j] < (float) (xmin + stepsize))) {
+                    query_tf_subL1.back()[i] += 1.0;
+                }
+            }
+        }
+        xmin += stepsize;
+    }
+    auto timer1e = std::chrono::system_clock::now();
+    auto timer1  = std::chrono::duration_cast<std::chrono::microseconds>(timer1e - timer1s);
+
+    // Combining the base of the pyramid blocks to create the layer 3
+    auto timer2s = std::chrono::system_clock::now();
+    std::vector<Eigen::VectorXf> query_tfidf_subL3;
+    Eigen::VectorXf tf_sub_temp;
+    int i_subset = 0;
+    xmin         = 0;  // resetting
+    int L_max    = 3;
+    int L_min    = 3;
+    for (int L = L_max; L >= L_min; --L) {
+        while ((xmin + stepsize * L) <= IMAGE_WIDTH) {
+            tf_sub_temp = query_tf_subL1[i_subset];
+            for (int i = 1; i < L; ++i) {
+                tf_sub_temp += query_tf_subL1[i_subset + i];
+            }
+            query_tfidf_subL3.push_back((tf_sub_temp / tf_sub_temp.sum()).array() * idf.array());
+            xmin += stepsize;
+            i_subset++;
+        }
+        xmin     = 0;
+        i_subset = 0;
+    }
+    auto timer2e = std::chrono::system_clock::now();
+    auto timer2  = std::chrono::duration_cast<std::chrono::microseconds>(timer2e - timer2s);
+
+    return query_tfidf_subL3;
 }
 
 void Tfidf::addToSPAverage(float time) {

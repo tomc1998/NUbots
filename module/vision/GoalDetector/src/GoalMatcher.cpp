@@ -58,8 +58,9 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
 
     // if ((!vocabLoaded) || (!frame.wordMapped)) return 0; // Check valid data
 
-    int num                                                = 0;
-    std::unique_ptr<std::priority_queue<MapEntry>> matches = std::make_unique<std::priority_queue<MapEntry>>();
+    int num                                                    = 0;
+    std::unique_ptr<std::priority_queue<MapEntry>> matchesPrim = std::make_unique<std::priority_queue<MapEntry>>();
+    std::unique_ptr<std::priority_queue<MapEntry>> matchesSec  = std::make_unique<std::priority_queue<MapEntry>>();
     Eigen::VectorXf query;
     std::vector<std::vector<float>> query_pixLoc;
     unsigned int seed = 42;  // Not sure what this seed does, but it is supposed to come from the figure.
@@ -76,44 +77,72 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
 
     //}
 
-    tfidf.searchDocument(query, query_pixLoc, matches, &seed, SEARCH_POSITIONS, resultTable);
+    tfidf.searchDocument(query, query_pixLoc, matchesPrim, matchesSec, &seed, SEARCH_POSITIONS, resultTable);
 
-    num = (int) matches->size();
-    printf("Number of matches = %d\n", num);
-    if (num > MIN_CONSENSUS_DIFF) {
+    num = (int) matchesPrim->size();
+    printf("Number of matchesPrim = %d\n", num);
 
-        AbsCoord position;
-        int i               = 0;
-        int away_goal_votes = 0;
-        int away_goal_count = 0;
-        int home_goal_count = 0;
-        while (!matches->empty() && i < SEARCH_POSITIONS) {
-            i++;
-            MapEntry entry = matches->top();
-            matches->pop();
+    AbsCoord position;
+    int i               = 0;
+    int away_goal_votes = 0;
+    int away_goal_count = 0;
+    int home_goal_count = 0;
+    while (!matchesPrim->empty() && i < SEARCH_POSITIONS) {
+        i++;
+        MapEntry entry = matchesPrim->top();
+        matchesPrim->pop();
+        position = entry.position;
+
+        if (position.theta() < M_PI / 2 && position.theta() > -M_PI / 2) {
+            away_goal_votes++;
+            away_goal_count++;
+        }
+        else {
+            away_goal_votes--;
+            home_goal_count++;
+        }
+    }
+
+
+    // Running Spatial Pyramid to attempt to recover some invalidated image matches
+    if ((num <= MIN_CONSENSUS_DIFF)
+        || ((away_goal_votes < MIN_CONSENSUS_DIFF) && (away_goal_votes > -MIN_CONSENSUS_DIFF))) {
+        i = away_goal_count + home_goal_count;
+        printf("RUNNING SPATIAL PYRAMID with i=%d\n", i);
+        while (!matchesSec->empty() && i <= SEARCH_POSITIONS) {
+            MapEntry entry = matchesSec->top();
+            matchesSec->pop();
             position = entry.position;
 
             if (position.theta() < M_PI / 2 && position.theta() > -M_PI / 2) {
                 away_goal_votes++;
                 away_goal_count++;
+                (*resultTable)(0, 4) = (*resultTable)(0, 4) + 1.0;
+                num++;
             }
             else {
                 away_goal_votes--;
                 home_goal_count++;
+                (*resultTable)(0, 5) = (*resultTable)(0, 5) + 1.0;
+                num++;
             }
-        }
-        // Now look for a consensus position
-        if (away_goal_votes >= MIN_CONSENSUS_DIFF) {
-            type = message::vision::Goal::Team::OPPONENT;
-            printf("This is the Opponent's goal. Away/Home votes: %d/%d\n", away_goal_count, home_goal_count);
-            return num;
-        }
-        else if (away_goal_votes <= -MIN_CONSENSUS_DIFF) {
-            type = message::vision::Goal::Team::OWN;
-            printf("This is our own goal. Away/Home votes: %d/%d\n", away_goal_count, home_goal_count);
-            return num;
+            i++;
         }
     }
+
+
+    // Now look for a consensus position
+    if ((away_goal_votes >= MIN_CONSENSUS_DIFF) && (num > MIN_CONSENSUS_DIFF)) {
+        type = message::vision::Goal::Team::OPPONENT;
+        printf("This is the Opponent's goal. Away/Home votes: %d/%d\n", away_goal_count, home_goal_count);
+        return num;
+    }
+    else if ((away_goal_votes <= -MIN_CONSENSUS_DIFF) && (num > MIN_CONSENSUS_DIFF)) {
+        type = message::vision::Goal::Team::OWN;
+        printf("This is our own goal. Away/Home votes: %d/%d\n", away_goal_count, home_goal_count);
+        return num;
+    }
+
     return num;
 }
 

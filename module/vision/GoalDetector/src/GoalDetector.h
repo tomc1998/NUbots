@@ -74,7 +74,9 @@ namespace vision {
         std::string VocabFileName = "/home/vagrant/NUbots/module/vision/GoalDetector/data/words.vocab";
         std::string MapFileName   = "/home/vagrant/NUbots/module/vision/GoalDetector/data/goals.map";
         GoalMatcher goalMatcher;
-        uint8_t imageNum            = 1;
+        uint8_t imageNum = 1;
+        //                        |     0  |      1     |       2     |      3       |       4     |      5      |
+        // result table columns = |CosScore|TrueGoalSide|RANSACInliers|RANSACOutliers|AWAYgoalvotes|HOMEgoalvotes|
         Eigen::MatrixXd resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);
         int awayImages              = 1;     // 1 = AWAY, 0 = HOME
         float imageSetSize          = 33.0;  // float because this number is the denominator in divisions
