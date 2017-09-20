@@ -31,7 +31,8 @@ public:
 
     void addToSPAverage(float time);
     void addToRANSACAverage(float time);
-    void printRANSACandSPAverages();
+    void addToBOVWAverage(float time);
+    void printRANSACandBOVWandSPAverages();
 
     void loadVocab(std::string vocabFile);
     void loadMap(std::string mapFile);
@@ -84,10 +85,12 @@ private:
     Eigen::VectorXf idf;  // corpus inverse document frequency
 
     float VALID_COSINE_SCORE = 0.40f;  // 0.42f
-    int VALID_INLIERS        = 40;     // 40 // 50
+    int VALID_INLIERS        = 30;     // 40 // 50
 
     float SPAverageTime;
     float RANSACAverageTime;
+    float BOVWAverageTime;
     float SPAverageN     = 0.0f;
     float RANSACAverageN = 0.0f;
+    float BOVWAverageN   = 0.0f;
 };

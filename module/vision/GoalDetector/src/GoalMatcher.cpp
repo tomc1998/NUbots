@@ -46,7 +46,7 @@ void GoalMatcher::setValidInliers(int x) {
 }
 
 void GoalMatcher::printRANSACandSPAverages() {
-    tfidf.printRANSACandSPAverages();
+    tfidf.printRANSACandBOVWandSPAverages();
 }
 
 int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::ClassifiedImage> frame,
@@ -103,7 +103,8 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
         }
     }
 
-    /*
+    auto timer_s = std::chrono::system_clock::now();
+
     // Running Spatial Pyramid to attempt to recover some invalidated image matches
     if ((num <= MIN_CONSENSUS_DIFF)
         || ((away_goal_votes < MIN_CONSENSUS_DIFF) && (away_goal_votes > -MIN_CONSENSUS_DIFF))) {
@@ -129,7 +130,10 @@ int GoalMatcher::classifyGoalArea(std::shared_ptr<const message::vision::Classif
             i++;
         }
     }
-    */
+    auto timer_e = std::chrono::system_clock::now();
+    auto timer   = std::chrono::duration_cast<std::chrono::microseconds>(timer_e - timer_s);
+    printf("Additional SP counting time: %0.0f\n", (float) timer.count());
+
 
     // Now look for a consensus position
     if ((away_goal_votes >= MIN_CONSENSUS_DIFF) && (num > MIN_CONSENSUS_DIFF)) {

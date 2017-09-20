@@ -246,6 +246,8 @@ namespace vision {
                 }
                 unsureCount = imageSetSize - correctCount - wrongCount;
                 printf("\nPerformance = %d/%d/%d\n\n", correctCount, wrongCount, unsureCount);
+                printf("SURFAverageTimer: %0.0f\n", SURFAverageTimer / 33);
+                SURFAverageTimer = 0.0;
 
                 if (awayImages == 1) {
                     awayImages  = 0;
@@ -779,9 +781,15 @@ namespace vision {
                     /********************************************************************
                      * SURF Landmark Extraction - needs Robot Detection                *
                      *******************************************************************/
+
+                    auto SURFtimer_s = std::chrono::system_clock::now();
                     SurfDetection surf_obj(rawImage);
                     surf_obj.loadVocab(VocabFileName);
                     surf_obj.findLandmarks(landmarks, landmark_tf, landmark_pixLoc);
+                    auto SURFtimer_e = std::chrono::system_clock::now();
+                    auto SURFtimer   = std::chrono::duration_cast<std::chrono::microseconds>(SURFtimer_e - SURFtimer_s);
+                    SURFAverageTimer += (float) SURFtimer.count();
+                    ;
 
                     /********************************************************************
                      * SURF Landmarks used to classify the goal area                   *

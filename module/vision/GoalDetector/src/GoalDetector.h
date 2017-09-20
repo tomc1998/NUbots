@@ -80,6 +80,7 @@ namespace vision {
         Eigen::MatrixXd resultTable = Eigen::MatrixXd::Zero(33 * 8, 6);
         int awayImages              = 1;     // 1 = AWAY, 0 = HOME
         float imageSetSize          = 33.0;  // float because this number is the denominator in divisions
+        float SURFAverageTimer      = 0;
 
     public:
         /// @brief Called by the powerplant to build and setup the GoalDetector reactor.

@@ -214,54 +214,25 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
         // enough
         Eigen::VectorXf tfidf_doc;
         printf("Cosine scores: (for N=%d)\n", N);
+        auto BOVWtimer_s = std::chrono::system_clock::now();
+        auto BOVWtimer_e = std::chrono::system_clock::now();
+        auto BOVWtimer   = std::chrono::duration_cast<std::chrono::microseconds>(BOVWtimer_e - BOVWtimer_s);
+
+        BOVWtimer_s = std::chrono::system_clock::now();
         for (int i = 0; i < N; i++) {
             tfidf_doc = (tf[i] / nd[i]).array() * idf.array();  // nd[i] can't be zero or it wouldn't have been added
-
-            // printf("nd[i] = %d\n",nd[i]);
-            /*
-            printf("tfidf_doc = [");
-            int count = 0;
-            for (int j = 0; j < tfidf_doc.size();j++){
-                if (tfidf_doc[j] < 0.001){
-                    count++;
-                }
-                else {
-                    if (count > 0) printf("...//%d//...",count);
-                    printf("(%.2f)",tfidf_doc[j]);
-                    count = 0;
-                }
-            }
-            if (count > 0) printf("...//%d//...",count);
-            printf("]\n");
-            */
-            // printf("tfidf_query dot tfidf_doc : %f, tfidf_query norm: %.2f, tfidf_doc norm:
-            // %.2f\n",tfidf_query.dot(tfidf_doc),tfidf_query.norm(),tfidf_doc.norm());
 
             map.at(i).score = cosineScore(tfidf_query, tfidf_doc);
             printf("%2d. map score: %.2f   ", i + 1, map[i].score);
             if (map.at(i).score > VALID_COSINE_SCORE) {
                 printf("This is a valid cosine score");
                 queue.push(std::make_pair(map.at(i), pixels.at(i)));
-                /*
-                printf("tfidf_doc = [");
-                int count = 0;
-                for (int j = 0; j < tfidf_doc.size();j++){
-                    if (tfidf_doc[j] < 0.001){
-                        count++;
-                    }
-                    else {
-                        if (count > 0) printf("...//%d//...",count);
-                        printf("(%.2f)",tfidf_doc[j]);
-                        count = 0;
-                    }
-                }
-                if (count > 0) printf("...//%d//...",count);
-                printf("]\n");
-                */
             }
             printf("\n");
         }
-        printf("Complete.\n");
+        BOVWtimer_e = std::chrono::system_clock::now();
+        BOVWtimer   = std::chrono::duration_cast<std::chrono::microseconds>(BOVWtimer_e - BOVWtimer_s);
+        addToBOVWAverage((float) BOVWtimer.count());
 
         // Now do geometric validation on the best until we have enough or the queue is empty
         int counter    = -1;
@@ -352,7 +323,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                 addToSPAverage((float) SPtimer.count());
                 addToRANSACAverage((float) RANSACtimer.count());
             }
-            /*
+
             if (ransacresult && (resultLine.t2 != 0.f)) {  // check t2 but should be fixed by slope constraint anyway
                 // count the inliers
                 int inliers = 0;
@@ -364,8 +335,6 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                 printf(", found %d inliers, %d outliers, ", inliers, (int) matchpoints.size() - inliers);
                 (*resultTable)(counter, 2) = (double) inliers;
                 (*resultTable)(counter, 3) = (double) matchpoints.size() - (double) inliers;
-                // printf("at (x,y,theta) loc: (%.1f, %.1f, %.1f)\n", mapEntry.position.x(), mapEntry.position.y(),
-                // mapEntry.position.theta());
 
                 if (inliers >= VALID_INLIERS) {
                     printf("Location is valid\n");
@@ -391,8 +360,8 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                 if ((*resultTable)(counter, 1) > 0.5) (*resultTable)(0, 4)  = (*resultTable)(0, 4) - 1.0;
                 if ((*resultTable)(counter, 1) < -0.5) (*resultTable)(0, 5) = (*resultTable)(0, 5) - 1.0;
             }
-            */
 
+            /*
             // Spatial Pyramid only method
             (*resultTable)(counter, 2) = 0.0;  // just to prevent crashing
             (*resultTable)(counter, 3) = 0.1;
@@ -406,6 +375,7 @@ void Tfidf::searchDocument(Eigen::VectorXf tf_query,
                 if ((*resultTable)(counter, 1) > 0.5) (*resultTable)(0, 4)  = (*resultTable)(0, 4) - 1.0;
                 if ((*resultTable)(counter, 1) < -0.5) (*resultTable)(0, 5) = (*resultTable)(0, 5) - 1.0;
             }
+            */
         }
     }
 }
@@ -665,7 +635,21 @@ void Tfidf::addToRANSACAverage(float time) {
     }
 }
 
-void Tfidf::printRANSACandSPAverages() {
+void Tfidf::addToBOVWAverage(float time) {
+    BOVWAverageN += 1.0f;
+    if (BOVWAverageN < 1.5f) {
+        BOVWAverageTime = time;
+    }
+    else {
+        BOVWAverageTime = ((BOVWAverageN - 1.0f) / BOVWAverageN) * BOVWAverageTime + time / BOVWAverageN;
+    }
+}
+
+void Tfidf::printRANSACandBOVWandSPAverages() {
     float ratio = SPAverageTime / RANSACAverageTime;
-    printf("SPAverageTime: %0.0f, RANSACAverageTime: %0.0f (x%0.1f)\n", SPAverageTime, RANSACAverageTime, ratio);
+    printf("SPAverageTime: %0.0f, RANSACAverageTime: %0.0f (x%0.1f), BOVWAverageTime: %0.0f\n",
+           SPAverageTime,
+           RANSACAverageTime,
+           ratio,
+           BOVWAverageTime);
 }
