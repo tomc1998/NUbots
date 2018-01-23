@@ -43,7 +43,7 @@ namespace vision {
         on<Startup>().then([this] {
             // Loading in first image
             cv::Mat raw_image;
-            raw_image = cv::imread("/home/vagrant/NUbots/module/vision/VisualSLAM/data/NUbotsRoom_Dataset1/000000.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+            raw_image = cv::imread("/home/vagrant/Datasets/NUbotsRoom_Dataset1/000000.jpg", CV_LOAD_IMAGE_GRAYSCALE);
 
             // Converting matrix to a concatenated long vector
             std::vector<uint8_t> data(image_height * image_width, 0);
