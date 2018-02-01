@@ -35,12 +35,30 @@ namespace vision {
 
         void LoadImages(const std::string strPathToSequence,
                     	std::vector<std::string> &vstrImageFilenames,
-                    	std::vector<NUClear::clock::duration> &vTimestamps);
+                    	std::vector<std::chrono::microseconds> &vTimestamps);
 
 	private:
 		double T_kkminus1;
 		std::vector<std::string> vstrImageFilenames;
-  		std::vector<NUClear::clock::duration> vTimestamps; //in microseconds
+  		std::vector<std::chrono::microseconds> vTimestamps; //in microseconds
+
+  		// Number of images to process
+  		int nImages;
+
+  		// Current image number we are processing
+  		int curImage;
+
+  		// When we started playing this file
+        NUClear::clock::time_point start_time;
+
+        // When we started this loop
+        NUClear::clock::time_point loop_start_time;
+
+        // When we started this loop
+        std::chrono::microseconds loop_start_timestamp;
+
+        // The first time that appears in the file
+        std::chrono::microseconds first_timecode;
 		uint image_width = 1280;
 		uint image_height = 1024;
 
