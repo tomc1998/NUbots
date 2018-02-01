@@ -26,6 +26,9 @@
 #include "utility/vision/fourcc.h"
 #include "stdio.h"
 #include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <chrono>
 
 namespace module {
 namespace vision {
@@ -41,6 +44,10 @@ namespace vision {
         //});
 
         on<Startup>().then([this] {
+
+            // Loading in timestamp and image filepath data
+            LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1", vstrImageFilenames, vTimestamps);
+            
             // Loading in first image
             cv::Mat raw_image;
             raw_image = cv::imread("/home/vagrant/Datasets/NUbotsRoom_Dataset1/000000.jpg", CV_LOAD_IMAGE_GRAYSCALE);
@@ -82,6 +89,38 @@ namespace vision {
 
 
         });
+
+    }
+
+    void VisualSLAM::LoadImages(const std::string strPathToSequence,
+                    std::vector<std::string> &vstrImageFilenames,
+                    std::vector<NUClear::clock::duration> &vTimestamps) {
+        std::ifstream fTimes;
+        std::string strPathTimeFile = strPathToSequence + "/TimeStamp.txt";
+        fTimes.open(strPathTimeFile.c_str());
+        while (!fTimes.eof()) {
+            std::string s;
+            getline(fTimes, s);
+            if (!s.empty()) {
+                std::stringstream ss;
+                ss << s;
+                int t;
+                ss >> t; // in milliseconds
+                NUClear::clock::duration tt = std::chrono::microseconds(t*1000);
+                vTimestamps.push_back(tt); // in microseconds
+            }
+        }
+
+        std::string strPrefixLeft = strPathToSequence;
+
+        const int nTimes = vTimestamps.size();
+        vstrImageFilenames.resize(nTimes);
+
+        for (int i = 0; i < nTimes; i++) {
+            std::stringstream ss;
+            ss << std::setfill('0') << std::setw(6) << i;
+            vstrImageFilenames[i] = strPrefixLeft + ss.str() + ".jpg";
+        }
     }
 }
 }
