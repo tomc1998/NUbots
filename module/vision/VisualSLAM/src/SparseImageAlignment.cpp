@@ -24,7 +24,6 @@ namespace module {
 namespace vision {
 
 	double SparseImageAlignment::sparseImageAlignment(const Image& newImage) {
-		std::cout << "First Element: " << std::endl;
 		return 0;
 	}
 

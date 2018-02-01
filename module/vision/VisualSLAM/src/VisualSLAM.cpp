@@ -29,6 +29,7 @@
 #include <fstream>
 #include <iomanip>
 #include <chrono>
+#include <nuclear>
 
 namespace module {
 namespace vision {
@@ -46,41 +47,76 @@ namespace vision {
         on<Startup>().then([this] {
 
             // Loading in timestamp and image filepath data
-            LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1", vstrImageFilenames, vTimestamps);
-            
-            // Loading in first image
-            cv::Mat raw_image;
-            raw_image = cv::imread("/home/vagrant/Datasets/NUbotsRoom_Dataset1/000000.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+            LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
+            nImages = vstrImageFilenames.size();
+            curImage = 0;
+        });
 
-            // Converting matrix to a concatenated long vector
-            std::vector<uint8_t> data(image_height * image_width, 0);
-            if (!raw_image.data) {
-                std::cout << "Could not open or find the image" << std::endl;
-            }
-            else if (raw_image.isContinuous()) {
-                data.assign(raw_image.datastart, raw_image.dataend);
-            }
-            else {
-                for (int i = 0; i < raw_image.rows; ++i) {
-                    data.insert(data.end(), raw_image.ptr<uchar>(i), raw_image.ptr<uchar>(i) + raw_image.cols);
+        // Emitting loaded images
+        // Loop two times per second
+        on<Every<2,std::chrono::seconds>>().then([this] {
+
+            std::cout << "Starting Image Emitting Loop" << std::endl;
+            if (curImage < nImages) {
+                loop_start_time = NUClear::clock::now();
+                loop_start_timestamp = vTimestamps.at(curImage);
+                std::chrono::milliseconds halfASecond(500);
+
+                // This is our first image
+                if (curImage == 0) {
+                    start_time = NUClear::clock::now();
+                    first_timecode = vTimestamps.at(0);
+                    std::cout << "First image setup. Start_time: " << start_time.time_since_epoch().count() << ", first_timecode: " << first_timecode.count() << std::endl;
+                }
+
+                while((vTimestamps.at(curImage)-loop_start_timestamp) < halfASecond) {
+                    std::cout << "Looping" << std::endl;
+                    // Load image
+                    std::cout << "Loading image " << curImage << std::endl;
+                    cv::Mat raw_image;
+                    raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
+
+                    // Converting matrix to a concatenated long vector
+                    std::vector<uint8_t> data(image_height * image_width, 0);
+                    if (!raw_image.data) {
+                        std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
+                    }
+                    else if (raw_image.isContinuous()) {
+                        data.assign(raw_image.datastart, raw_image.dataend);
+                    }
+                    else {
+                        for (int i = 0; i < raw_image.rows; ++i) {
+                            data.insert(data.end(), raw_image.ptr<uchar>(i), raw_image.ptr<uchar>(i) + raw_image.cols);
+                        }
+                    }
+
+                    /* Create the image */
+                    auto image = std::make_unique<Image>();
+                    image->format     = utility::vision::FOURCC::GREY;
+                    image->dimensions = {image_width, image_width};
+                    image->data       = data;
+
+                    // Work out when we should emit this packet
+                    NUClear::clock::time_point emit_time = start_time + vTimestamps.at(curImage) - first_timecode;
+
+                    emit<Scope::DELAY>(std::move(image),emit_time - NUClear::clock::now());
+
+                    curImage++;
+                    
+                    // This is our last image
+                    if (curImage == nImages)
+                        break;
                 }
             }
-
-            /* Create the image */
-            auto image = std::make_unique<Image>();
-            image->format     = utility::vision::FOURCC::GREY;
-            image->dimensions = {image_width, image_width};
-            image->data       = data;
-            emit(std::move(image));
         });
 
         // Visual Odometry - motion estimation thread
         on<Trigger<Image>, Single>().then([this](const Image& newImage) {
 
+            std:: cout << "Image Received" << std::endl;
             // Sparse Model-based Image Alignment
             SparseImageAlignment sia;
             T_kkminus1 = sia.sparseImageAlignment(newImage);
-            std::cout << "T_kk-1 = " << T_kkminus1 << std::endl;
             // Feature Alignment
 
 
@@ -93,10 +129,10 @@ namespace vision {
     }
 
     void VisualSLAM::LoadImages(const std::string strPathToSequence,
-                    std::vector<std::string> &vstrImageFilenames,
-                    std::vector<NUClear::clock::duration> &vTimestamps) {
+                                std::vector<std::string> &vstrImageFilenames,
+                                std::vector<std::chrono::microseconds> &vTimestamps) {
         std::ifstream fTimes;
-        std::string strPathTimeFile = strPathToSequence + "/TimeStamp.txt";
+        std::string strPathTimeFile = strPathToSequence + "TimeStamp.txt";
         fTimes.open(strPathTimeFile.c_str());
         while (!fTimes.eof()) {
             std::string s;
@@ -106,7 +142,7 @@ namespace vision {
                 ss << s;
                 int t;
                 ss >> t; // in milliseconds
-                NUClear::clock::duration tt = std::chrono::microseconds(t*1000);
+                std::chrono::microseconds tt(t*1000);
                 vTimestamps.push_back(tt); // in microseconds
             }
         }
