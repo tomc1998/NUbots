@@ -22,6 +22,7 @@
 
 #include <nuclear>
 #include "message/input/Image.h"
+#include <string>
 
 namespace module {
 namespace vision {
@@ -32,8 +33,14 @@ namespace vision {
         /// @brief Called by the powerplant to build and setup the VisualSLAM reactor.
         explicit VisualSLAM(std::unique_ptr<NUClear::Environment> environment);
 
+        void LoadImages(const std::string strPathToSequence,
+                    	std::vector<std::string> &vstrImageFilenames,
+                    	std::vector<NUClear::clock::duration> &vTimestamps);
+
 	private:
 		double T_kkminus1;
+		std::vector<std::string> vstrImageFilenames;
+  		std::vector<NUClear::clock::duration> vTimestamps; //in microseconds
 		uint image_width = 1280;
 		uint image_height = 1024;
 
