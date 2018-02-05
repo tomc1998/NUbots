@@ -48,11 +48,40 @@ namespace vision {
             // Loading in timestamp and image filepath data
             LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
             nImages = vstrImageFilenames.size();
-            curImage = 0;
+            //curImage = 0;
+
+            for (curImage = 0; curImage < nImages; curImage++) {
+                // Load image
+                cv::Mat raw_image;
+                raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
+
+                // Converting matrix to a concatenated long vector
+                std::vector<uint8_t> data(image_height * image_width, 0);
+                if (!raw_image.data) {
+                    std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
+                }
+                else if (raw_image.isContinuous()) {
+                    data.assign(raw_image.datastart, raw_image.dataend);
+                }
+                else {
+                    for (int i = 0; i < raw_image.rows; ++i) {
+                        data.insert(data.end(), raw_image.ptr<uchar>(i), raw_image.ptr<uchar>(i) + raw_image.cols);
+                    }
+                }
+
+                // Create the image 
+                auto image = std::make_unique<Image>();
+                image->format     = utility::vision::FOURCC::GREY;
+                image->dimensions = {image_width, image_width};
+                image->data       = data;
+
+                std::cout << "Emitting Image #" << curImage << "/" << nImages <<std::endl;
+                emit<Scope::DIRECT>(std::move(image));
+            }
         });
 
-        // Emitting loaded images
-        // Loop two times per second
+        // Emitting loaded images at the correct time
+        /*
         on<Every<500,std::chrono::milliseconds>>().then([this] {
 
             if (curImage < nImages) {
@@ -102,6 +131,7 @@ namespace vision {
                 }
             }
         });
+        */
 
         // Visual Odometry - motion estimation thread
         on<Trigger<Image>, Single>().then([this](const Image& newImage) {
@@ -111,8 +141,9 @@ namespace vision {
             T_kkminus1 = sia.sparseImageAlignment(newImage);
             // Feature Alignment
 
-
             // Pose and Structure Refinement
+
+            std::cout << "Image finished processing" << std::endl;
 
         });
 
