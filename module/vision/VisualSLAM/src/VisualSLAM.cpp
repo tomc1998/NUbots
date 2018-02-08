@@ -19,6 +19,7 @@
 
 #include "VisualSLAM.h"
 
+#include "message/input/CameraParameters.h"
 #include "extension/Configuration.h"
 #include "SparseImageAlignment.h"
 #include "opencv2/core/core.hpp"
@@ -36,19 +37,34 @@ namespace vision {
 
     using extension::Configuration;
     using message::input::Image;
+    using message::input::CameraParameters;
 
 
     VisualSLAM::VisualSLAM(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
 
-        //on<Configuration>("VisualSLAM.yaml").then([this](const Configuration& config) {
-            // Use configuration here from file VisualSLAM.yaml
-        //});
+        on<Configuration>("VisualSLAM.yaml").then([this](const Configuration& config) { 
+            IMAGE_WIDTH  = config["image_width"].as<uint>();
+            IMAGE_HEIGHT = config["image_height"].as<uint>();
+        });
 
         on<Startup>().then([this] {
             // Loading in timestamp and image filepath data
             LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
             nImages = vstrImageFilenames.size();
-            //curImage = 0;
+
+            // Camera parameters when running from desktop
+            auto cameraParameters = std::make_unique<CameraParameters>();
+
+            // Generic camera parameters
+            cameraParameters->imageSizePixels << 1280,1024;
+
+            // Radial specific
+            cameraParameters->lens                   = CameraParameters::LensType::RADIAL;
+            cameraParameters->radial.radiansPerPixel = 0.0025527;
+            cameraParameters->centreOffset           << 397,288;
+
+            emit(std::move(cameraParameters));
+
 
             for (curImage = 0; curImage < nImages; curImage++) {
                 // Load image
@@ -56,7 +72,7 @@ namespace vision {
                 raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
 
                 // Converting matrix to a concatenated long vector
-                std::vector<uint8_t> data(image_height * image_width, 0);
+                std::vector<uint8_t> data(IMAGE_HEIGHT * IMAGE_WIDTH, 0);
                 if (!raw_image.data) {
                     std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
                 }
@@ -72,7 +88,7 @@ namespace vision {
                 // Create the image 
                 auto image = std::make_unique<Image>();
                 image->format     = utility::vision::FOURCC::GREY;
-                image->dimensions = {image_width, image_width};
+                image->dimensions = {IMAGE_WIDTH, IMAGE_HEIGHT};
                 image->data       = data;
 
                 std::cout << "Emitting Image #" << curImage << "/" << nImages <<std::endl;
@@ -95,7 +111,7 @@ namespace vision {
                     raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
 
                     // Converting matrix to a concatenated long vector
-                    std::vector<uint8_t> data(image_height * image_width, 0);
+                    std::vector<uint8_t> data(IMAGE_HEIGHT * IMAGE_WIDTH, 0);
                     if (!raw_image.data) {
                         std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
                     }
@@ -111,7 +127,7 @@ namespace vision {
                     // Create the image 
                     auto image = std::make_unique<Image>();
                     image->format     = utility::vision::FOURCC::GREY;
-                    image->dimensions = {image_width, image_width};
+                    image->dimensions = {IMAGE_WIDTH, IMAGE_HEIGHT};
                     image->data       = data;
 
                     // This is our first image
@@ -134,11 +150,13 @@ namespace vision {
         */
 
         // Visual Odometry - motion estimation thread
-        on<Trigger<Image>, Single>().then([this](const Image& newImage) {
+        on<Trigger<Image>,With<CameraParameters>, Single>().then([this]
+            (const Image& newImage,
+             const CameraParameters& cam) {
 
             // Sparse Model-based Image Alignment
             SparseImageAlignment sia;
-            T_kkminus1 = sia.sparseImageAlignment(newImage);
+            T_kkminus1 = sia.sparseImageAlignment(newImage, cam);
             // Feature Alignment
 
             // Pose and Structure Refinement

@@ -22,15 +22,14 @@
 
 #include <nuclear>
 #include "message/input/Image.h"
+#include "message/input/CameraParameters.h"
 
 namespace module {
 namespace vision {
-	
-	using message::input::Image;
 
 	class SparseImageAlignment {
 	public:
-		double sparseImageAlignment(const Image& newImage);
+		double sparseImageAlignment(const message::input::Image& newImage, const message::input::CameraParameters& cam);
 
 
 	private:
