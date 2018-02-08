@@ -59,8 +59,8 @@ namespace vision {
 
         // The first time that appears in the file
         std::chrono::microseconds first_timecode;
-		uint image_width = 1280;
-		uint image_height = 1024;
+		uint IMAGE_WIDTH;
+		uint IMAGE_HEIGHT;
 
     };
 }

@@ -19,11 +19,15 @@
 
 #include "SparseImageAlignment.h"
 #include "stdio.h"
+#include "utility/math/vision.h"
 
 namespace module {
 namespace vision {
 
-	double SparseImageAlignment::sparseImageAlignment(const Image& newImage) {
+	using message::input::Image;
+	using message::input::CameraParameters;
+
+	double SparseImageAlignment::sparseImageAlignment(const Image& newImage, const CameraParameters& cam) {
 		return 0;
 	}
 
