@@ -17,8 +17,8 @@
  * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
-#ifndef MODULES_VISION_SPARSEIMAGEALIGNMENT_H
-#define MODULES_VISION_SPARSEIMAGEALIGNMENT_H
+#ifndef MODULES_VISION_SVO_H
+#define MODULES_VISION_SVO_H
 
 #include <nuclear>
 #include "message/input/Image.h"
@@ -27,9 +27,9 @@
 namespace module {
 namespace vision {
 
-	class SparseImageAlignment {
+	class SVO{
 	public:
-		double sparseImageAlignment(const message::input::Image& newImage, const message::input::CameraParameters& cam);
+		void visualOdometry(const message::input::Image& newImage, const message::input::CameraParameters& cam);
 
 
 	private:

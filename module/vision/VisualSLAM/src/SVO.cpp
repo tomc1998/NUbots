@@ -17,7 +17,7 @@
  * Copyright 2013 NUbots <nubots@nubots.net>
  */
 
-#include "SparseImageAlignment.h"
+#include "SVO.h"
 #include "stdio.h"
 #include "utility/math/vision.h"
 
@@ -27,8 +27,10 @@ namespace vision {
 	using message::input::Image;
 	using message::input::CameraParameters;
 
-	double SparseImageAlignment::sparseImageAlignment(const Image& newImage, const CameraParameters& cam) {
-		return 0;
+	void SVO::visualOdometry(const Image& newImage, const CameraParameters& cam) {
+
+		// Detect features
+			// Detect corners
 	}
 
 

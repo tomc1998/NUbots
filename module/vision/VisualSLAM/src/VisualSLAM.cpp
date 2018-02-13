@@ -21,7 +21,7 @@
 
 #include "message/input/CameraParameters.h"
 #include "extension/Configuration.h"
-#include "SparseImageAlignment.h"
+#include "SVO.h"
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "utility/vision/fourcc.h"
@@ -154,12 +154,8 @@ namespace vision {
             (const Image& newImage,
              const CameraParameters& cam) {
 
-            // Sparse Model-based Image Alignment
-            SparseImageAlignment sia;
-            T_kkminus1 = sia.sparseImageAlignment(newImage, cam);
-            // Feature Alignment
-
-            // Pose and Structure Refinement
+            SVO svo;
+            svo.visualOdometry(newImage, cam);
 
             std::cout << "Image finished processing" << std::endl;
 
