@@ -29,10 +29,37 @@ namespace vision {
 
 	class SVO{
 	public:
+		enum Stage {
+		    STAGE_PAUSED,
+		    STAGE_FIRST_FRAME,
+		    STAGE_SECOND_FRAME,
+		    STAGE_DEFAULT_FRAME,
+		    STAGE_RELOCALIZING
+		};
+		enum TrackingQuality {
+			TRACKING_INSUFFICIENT,
+			TRACKING_BAD,
+			TRACKING_GOOD
+		};
+		enum UpdateResult {
+			RESULT_NO_KEYFRAME,
+			RESULT_IS_KEYFRAME,
+			RESULT_FAILURE
+		};
+
+		SVO();
 		void visualOdometry(const message::input::Image& newImage, const message::input::CameraParameters& cam);
 
 
 	private:
+		UpdateResult processFrame(const message::input::Image& newImage, const message::input::CameraParameters& cam);
+		UpdateResult processSecondFrame(const message::input::Image& newImage, const message::input::CameraParameters& cam);
+		UpdateResult processFirstFrame(const message::input::Image& newImage, const message::input::CameraParameters& cam);
+		UpdateResult relocalizeFrame(const message::input::Image& newImage, const message::input::CameraParameters& cam);
+
+		Stage stage_;
+		TrackingQuality tracking_quality_;
+
 		
 		
 
