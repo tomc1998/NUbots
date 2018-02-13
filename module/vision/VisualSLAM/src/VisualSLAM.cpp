@@ -21,7 +21,6 @@
 
 #include "message/input/CameraParameters.h"
 #include "extension/Configuration.h"
-#include "SVO.h"
 #include "opencv2/core/core.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "utility/vision/fourcc.h"
@@ -73,17 +72,10 @@ namespace vision {
 
                 // Converting matrix to a concatenated long vector
                 std::vector<uint8_t> data(IMAGE_HEIGHT * IMAGE_WIDTH, 0);
-                if (!raw_image.data) {
+                if (!raw_image.data)
                     std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
-                }
-                else if (raw_image.isContinuous()) {
+                else 
                     data.assign(raw_image.datastart, raw_image.dataend);
-                }
-                else {
-                    for (int i = 0; i < raw_image.rows; ++i) {
-                        data.insert(data.end(), raw_image.ptr<uchar>(i), raw_image.ptr<uchar>(i) + raw_image.cols);
-                    }
-                }
 
                 // Create the image 
                 auto image = std::make_unique<Image>();
@@ -154,7 +146,6 @@ namespace vision {
             (const Image& newImage,
              const CameraParameters& cam) {
 
-            SVO svo;
             svo.visualOdometry(newImage, cam);
 
             std::cout << "Image finished processing" << std::endl;

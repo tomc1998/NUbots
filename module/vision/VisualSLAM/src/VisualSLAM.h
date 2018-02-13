@@ -22,6 +22,7 @@
 
 #include <nuclear>
 #include "message/input/Image.h"
+#include "SVO.h"
 #include <string>
 
 namespace module {
@@ -37,18 +38,19 @@ namespace vision {
                     	std::vector<std::string> &vstrImageFilenames,
                     	std::vector<std::chrono::microseconds> &vTimestamps);
 
-	private:
-		double T_kkminus1;
-		std::vector<std::string> vstrImageFilenames;
-  		std::vector<std::chrono::microseconds> vTimestamps; //in microseconds
+    private:
 
-  		// Number of images to process
-  		int nImages;
+        SVO svo;
+        std::vector<std::string> vstrImageFilenames;
+    		std::vector<std::chrono::microseconds> vTimestamps; //in microseconds
 
-  		// Current image number we are processing
-  		int curImage;
+    		// Number of images to process
+    		int nImages;
 
-  		// When we started playing this file
+    		// Current image number we are processing
+    		int curImage;
+
+  		  // When we started playing this file
         NUClear::clock::time_point start_time;
 
         // When we started this loop
@@ -59,8 +61,8 @@ namespace vision {
 
         // The first time that appears in the file
         std::chrono::microseconds first_timecode;
-		uint IMAGE_WIDTH;
-		uint IMAGE_HEIGHT;
+    		uint IMAGE_WIDTH;
+    		uint IMAGE_HEIGHT;
 
     };
 }
