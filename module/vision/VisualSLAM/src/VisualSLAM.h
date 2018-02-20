@@ -22,7 +22,7 @@
 
 #include <nuclear>
 #include "message/input/Image.h"
-#include "SVO.h"
+#include "System.h"
 #include <string>
 
 namespace module {
@@ -40,7 +40,7 @@ namespace vision {
 
     private:
 
-        SVO svo;
+        System SLAM();
         std::vector<std::string> vstrImageFilenames;
     		std::vector<std::chrono::microseconds> vTimestamps; //in microseconds
 
