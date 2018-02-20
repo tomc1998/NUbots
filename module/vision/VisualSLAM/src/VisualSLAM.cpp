@@ -146,7 +146,6 @@ namespace vision {
             (const Image& newImage,
              const CameraParameters& cam) {
 
-            svo.visualOdometry(newImage, cam);
 
             std::cout << "Image finished processing" << std::endl;
 
