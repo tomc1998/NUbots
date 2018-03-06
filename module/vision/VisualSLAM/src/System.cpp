@@ -32,8 +32,8 @@ namespace vision {
 	using message::input::Image;
 	using message::input::CameraParameters;
 
-	System::System(/*const std::string &strVocFile, const std::string &strSettingsFile, const eSensor sensor*/)
-				  :/*mSensor(sensor), */mbReset(false),mbActivateLocalizationMode(false),
+	System::System(const std::string &strVocFile, const eSensor sensor)
+				  :mSensor(sensor), mbReset(false),mbActivateLocalizationMode(false),
 				  mbDeactivateLocalizationMode(false)
 	{
 	    // Output welcome message
@@ -50,16 +50,6 @@ namespace vision {
 	    else if(mSensor==STEREO)
 	        std::cout << "Stereo" << std::endl;
 
-	    //Check settings file
-	    /*
-	    cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
-	    if(!fsSettings.isOpened())
-	    {
-	       cerr << "Failed to open settings file at: " << strSettingsFile << std::endl;
-	       exit(-1);
-	    }
-		*/
-	    /*
 	    //Load ORB Vocabulary
 	    std::cout << std::endl << "Loading ORB Vocabulary. This could take a while..." << std::endl;
 
@@ -72,7 +62,7 @@ namespace vision {
 	        exit(-1);
 	    }
 	    std::cout << "Vocabulary loaded!" << std::endl << std::endl;
-		*/
+		
 	    //Create KeyFrame Database
 	    //mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 

@@ -40,10 +40,10 @@ namespace vision {
 
     private:
 
-        System SLAM();
         std::vector<std::string> vstrImageFilenames;
     		std::vector<std::chrono::microseconds> vTimestamps; //in microseconds
-
+        std::string strVocFile;
+        System::eSensor cameraCombination;
     		// Number of images to process
     		int nImages;
 
@@ -61,8 +61,9 @@ namespace vision {
 
         // The first time that appears in the file
         std::chrono::microseconds first_timecode;
-    		uint IMAGE_WIDTH;
-    		uint IMAGE_HEIGHT;
+    		uint imageWidth;
+    		uint imageHeight;
+
 
     };
 }

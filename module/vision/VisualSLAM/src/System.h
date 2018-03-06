@@ -22,15 +22,15 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#include<string>
-#include<opencv2/core/core.hpp>
+#include <string>
+#include <opencv2/core/core.hpp>
 
 //#include "Tracking.h"
 //#include "Map.h"
 //#include "LocalMapping.h"
 //#include "LoopClosing.h"
 //#include "KeyFrameDatabase.h"
-//#include "ORBVocabulary.h"
+#include "ORBVocabulary.h"
 
 namespace module {
 namespace vision {
@@ -46,13 +46,13 @@ namespace vision {
         // Input sensor
         enum eSensor{
             MONOCULAR=0,
-            STEREO=1,
+            STEREO=1
         };
 
     public:
 
         // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-        System(/*const std::string &strVocFile, const std::string &strSettingsFile, const eSensor sensor*/);
+        System(const std::string &strVocFile, const eSensor sensor);
 
         // Proccess the given stereo frame. Images must be synchronized and rectified.
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -93,7 +93,7 @@ namespace vision {
         eSensor mSensor;
 
         // ORB vocabulary used for place recognition and feature matching.
-        //ORBVocabulary* mpVocabulary;
+        ORBVocabulary* mpVocabulary;
 
         // KeyFrame database for place recognition (relocalization and loop detection).
         //KeyFrameDatabase* mpKeyFrameDatabase;

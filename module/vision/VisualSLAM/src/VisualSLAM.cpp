@@ -42,11 +42,16 @@ namespace vision {
     VisualSLAM::VisualSLAM(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
 
         on<Configuration>("VisualSLAM.yaml").then([this](const Configuration& config) { 
-            IMAGE_WIDTH  = config["image_width"].as<uint>();
-            IMAGE_HEIGHT = config["image_height"].as<uint>();
+            imageWidth  = config["imageWidth"].as<uint>();
+            imageHeight = config["imageHeight"].as<uint>();
+            strVocFile = config["strVocFile"].as<std::string>();
+            cameraCombination = static_cast<System::eSensor>(config["cameraCombination"].as<int>());
         });
 
         on<Startup>().then([this] {
+
+            System SLAM(strVocFile,cameraCombination);
+            
             // Loading in timestamp and image filepath data
             LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
             nImages = vstrImageFilenames.size();
@@ -71,7 +76,7 @@ namespace vision {
                 raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
 
                 // Converting matrix to a concatenated long vector
-                std::vector<uint8_t> data(IMAGE_HEIGHT * IMAGE_WIDTH, 0);
+                std::vector<uint8_t> data(imageHeight * imageWidth, 0);
                 if (!raw_image.data)
                     std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
                 else 
@@ -80,7 +85,7 @@ namespace vision {
                 // Create the image 
                 auto image = std::make_unique<Image>();
                 image->format     = utility::vision::FOURCC::GREY;
-                image->dimensions = {IMAGE_WIDTH, IMAGE_HEIGHT};
+                image->dimensions = {imageWidth, imageHeight};
                 image->data       = data;
 
                 std::cout << "Emitting Image #" << curImage << "/" << nImages <<std::endl;
@@ -103,7 +108,7 @@ namespace vision {
                     raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
 
                     // Converting matrix to a concatenated long vector
-                    std::vector<uint8_t> data(IMAGE_HEIGHT * IMAGE_WIDTH, 0);
+                    std::vector<uint8_t> data(imageHeight * imageWidth, 0);
                     if (!raw_image.data) {
                         std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
                     }
@@ -119,7 +124,7 @@ namespace vision {
                     // Create the image 
                     auto image = std::make_unique<Image>();
                     image->format     = utility::vision::FOURCC::GREY;
-                    image->dimensions = {IMAGE_WIDTH, IMAGE_HEIGHT};
+                    image->dimensions = {imageWidth, imageHeight};
                     image->data       = data;
 
                     // This is our first image
