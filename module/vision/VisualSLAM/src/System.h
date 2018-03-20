@@ -89,6 +89,8 @@ namespace vision {
         // This function must be called before saving the trajectory.
         void Shutdown();
 
+        void SaveKeyFrameTrajectoryTUM(const string &filename);
+
         // Information from most recent processed frame
         // You can call this right after TrackMonocular (or stereo or RGBD)
         int GetTrackingState();

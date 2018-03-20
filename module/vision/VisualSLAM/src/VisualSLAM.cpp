@@ -170,10 +170,16 @@ namespace vision {
             double process_loop_timer = std::chrono::duration_cast<std::chrono::duration<double>>(
                          process_loop_end_time - process_loop_start_time)
                          .count();
-          double processLoopTimerAvg = process_loop_timer / nImages;
-          double frameRate = 1 / processLoopTimerAvg;
+            double processLoopTimerAvg = process_loop_timer / nImages;
+            double frameRate = 1 / processLoopTimerAvg;
+            std::cout << "Frame rate: " << frameRate << std::endl;
 
-          std::cout << "Frame rate: " << frameRate << std::endl;
+            // Save camera trajectory
+            SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+
+            // Trigger print Tcw
+            auto pPrintTcwFlag = std::make_unique<PrintTcwFlag>();
+            emit(std::move(pPrintTcwFlag));
 
         });
 
@@ -193,8 +199,14 @@ namespace vision {
 
             // Cropping image to allow opencv calibration to work properly
             cv::Rect myROI(256, 205, 768, 614);
-            SLAM.TrackMonocular(im(myROI),newImage.timestamp.time_since_epoch().count());
 
+            // Process Image
+            cv::Mat Tcw = SLAM.TrackMonocular(im(myROI),newImage.timestamp.time_since_epoch().count());
+
+            // Emit Transform
+            auto transformCW = make_unique<Transform_CW>();
+            transformCW->Tcw = Tcw;
+            emit(std::move(transformCW));
         });
 
         // Mapping thread
@@ -207,6 +219,24 @@ namespace vision {
         on<Trigger<LaunchLoopClosing>>().then([this]()
         {
             SLAM.launchLoopClosing();
+        });
+
+        // Print Tcw
+        on<Trigger<PrintTcwFlag>,With<Transform_CW>>().then([this]
+            (const PrintTcwFlag& printTcwFlag,
+             const Transform_CW& transformCW){
+
+            // Printing Tcw    
+            cv::Mat Tcw = transformCW.Tcw;
+            cout << "Tcw [" << Tcw.rows << "," << Tcw.cols << "]:" << endl;
+            for (int m = 0; m < Tcw.rows; m++)
+            {
+                for (int n = 0; n < Tcw.cols; n++)
+                {
+                    cout << Tcw.at<double>(m,n) << " ";
+                }
+                cout << endl;
+            }
         });
         
 

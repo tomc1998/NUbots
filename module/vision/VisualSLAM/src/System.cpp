@@ -201,6 +201,42 @@ namespace vision {
 	        usleep(5000);
 	    }
 	}
+
+	void System::SaveKeyFrameTrajectoryTUM(const string &filename)
+	{
+	    cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+
+	    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+	    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+
+	    // Transform all keyframes so that the first keyframe is at the origin.
+	    // After a loop closure the first keyframe might not be at the origin.
+	    //cv::Mat Two = vpKFs[0]->GetPoseInverse();
+
+	    ofstream f;
+	    f.open(filename.c_str());
+	    f << fixed;
+
+	    for(size_t i=0; i<vpKFs.size(); i++)
+	    {
+	        KeyFrame* pKF = vpKFs[i];
+
+	       // pKF->SetPose(pKF->GetPose()*Two);
+
+	        if(pKF->isBad())
+	            continue;
+
+	        cv::Mat R = pKF->GetRotation().t();
+	        vector<float> q = Converter::toQuaternion(R);
+	        cv::Mat t = pKF->GetCameraCenter();
+	        f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+	          << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+
+	    }
+
+	    f.close();
+	    cout << endl << "trajectory saved!" << endl;
+	}
 	
 
 	int System::GetTrackingState()

@@ -31,6 +31,12 @@ namespace vision {
     class LaunchMapping{};
     class LaunchLoopClosing{};
     class LaunchImageLoading{};
+    class PrintTcwFlag{};
+
+    class Transform_CW{
+        public:
+            cv::Mat Tcw;
+    };
 
     class VisualSLAM : public NUClear::Reactor {
 
