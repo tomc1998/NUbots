@@ -21,8 +21,7 @@
 #include "System.h"
 #include "stdio.h"
 #include "utility/math/vision.h"
-#include "message/input/Image.h"
-//#include "Converter.h"
+#include "Converter.h"
 #include <iomanip>
 
 
@@ -32,10 +31,12 @@ namespace vision {
 	using message::input::Image;
 	using message::input::CameraParameters;
 
-	System::System(const std::string &strVocFile, const eSensor sensor)
-				  :mSensor(sensor), mbReset(false),mbActivateLocalizationMode(false),
-				  mbDeactivateLocalizationMode(false)
+	void System::Initialize(const std::string &strVocFile,const std::string &strSettingsFile, const eSensor sensor)
 	{
+		mSensor = sensor;
+		mbReset = false;
+		mbActivateLocalizationMode = false;
+		mbDeactivateLocalizationMode = false;
 	    // Output welcome message
 	    std::cout << std::endl <<
 	    "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << std::endl <<
@@ -64,21 +65,162 @@ namespace vision {
 	    std::cout << "Vocabulary loaded!" << std::endl << std::endl;
 		
 	    //Create KeyFrame Database
-	    //mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
+	    mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
 
 	    //Create the Map
-	    //mpMap = new Map();
+	    mpMap = new Map();
 
 	    //Initialize Tracking
-	    //mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
-	    //                         mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
+	    mpTracker = new Tracking(this, mpVocabulary, mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
 
 	    //Initialize Local Mapping
-	    //mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
+	    mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
 
 	    //Initialize Loop Closing
-	    //mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
+	    mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor!=MONOCULAR);
+
+	    //Set pointers between threads
+	    mpTracker->SetLocalMapper(mpLocalMapper);
+	    mpTracker->SetLoopClosing(mpLoopCloser);
+
+	    mpLocalMapper->SetTracker(mpTracker);
+	    mpLocalMapper->SetLoopCloser(mpLoopCloser);
+
+	    mpLoopCloser->SetTracker(mpTracker);
+	    mpLoopCloser->SetLocalMapper(mpLocalMapper);
 	}
+
+	// Launch LocalMapping
+	void System::launchLocalMapping()
+	{
+		std::cout << "Launched Local Mapping" << std::endl;
+		mpLocalMapper->Run();
+	}
+
+    // Launch LoopClosing
+    void System::launchLoopClosing()
+    {
+    	std::cout << "Launched Loop Closing" << std::endl;
+    	mpLoopCloser->Run();
+    }
+
+	
+
+	cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
+	{
+	    if(mSensor!=MONOCULAR)
+	    {
+	        cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular." << endl;
+	        exit(-1);
+	    }
+
+	    // Check mode change
+	    {
+	        unique_lock<mutex> lock(mMutexMode);
+	        if(mbActivateLocalizationMode)
+	        {
+	            mpLocalMapper->RequestStop();
+
+	            // Wait until Local Mapping has effectively stopped
+	            while(!mpLocalMapper->isStopped())
+	            {
+	                usleep(1000);
+	            }
+
+	            mpTracker->InformOnlyTracking(true);
+	            mbActivateLocalizationMode = false;
+	        }
+	        if(mbDeactivateLocalizationMode)
+	        {
+	            mpTracker->InformOnlyTracking(false);
+	            mpLocalMapper->Release();
+	            mbDeactivateLocalizationMode = false;
+	        }
+	    }
+
+	    // Check reset
+	    {
+	    unique_lock<mutex> lock(mMutexReset);
+	    if(mbReset)
+	    {
+	        mpTracker->Reset();
+	        mbReset = false;
+	    }
+	    }
+
+	    cv::Mat Tcw = mpTracker->GrabImageMonocular(im,timestamp);
+
+	    unique_lock<mutex> lock2(mMutexState);
+	    mTrackingState = mpTracker->mState;
+	    mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
+	    mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+
+	    return Tcw;
+	}
+
+	void System::ActivateLocalizationMode()
+	{
+	    unique_lock<mutex> lock(mMutexMode);
+	    mbActivateLocalizationMode = true;
+	}
+
+	void System::DeactivateLocalizationMode()
+	{
+	    unique_lock<mutex> lock(mMutexMode);
+	    mbDeactivateLocalizationMode = true;
+	}
+
+	bool System::MapChanged()
+	{
+	    static int n=0;
+	    int curn = mpMap->GetLastBigChangeIdx();
+	    if(n<curn)
+	    {
+	        n=curn;
+	        return true;
+	    }
+	    else
+	        return false;
+	}
+
+	void System::Reset()
+	{
+	    unique_lock<mutex> lock(mMutexReset);
+	    mbReset = true;
+	}
+
+	
+	void System::Shutdown()
+	{
+	    mpLocalMapper->RequestFinish();
+	    mpLoopCloser->RequestFinish();
+
+	    // Wait until all thread have effectively stopped
+	    while(!mpLocalMapper->isFinished() || !mpLoopCloser->isFinished() || mpLoopCloser->isRunningGBA())
+	    {
+	        usleep(5000);
+	    }
+	}
+	
+
+	int System::GetTrackingState()
+	{
+	    unique_lock<mutex> lock(mMutexState);
+	    return mTrackingState;
+	}
+
+	vector<MapPoint*> System::GetTrackedMapPoints()
+	{
+	    unique_lock<mutex> lock(mMutexState);
+	    return mTrackedMapPoints;
+	}
+
+	vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
+	{
+	    unique_lock<mutex> lock(mMutexState);
+	    return mTrackedKeyPointsUn;
+	}
+
 
 
 }  // namespace vision

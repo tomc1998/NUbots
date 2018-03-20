@@ -24,21 +24,22 @@
 
 #include <string>
 #include <opencv2/core/core.hpp>
+#include "message/input/Image.h"
 
-//#include "Tracking.h"
-//#include "Map.h"
-//#include "LocalMapping.h"
-//#include "LoopClosing.h"
-//#include "KeyFrameDatabase.h"
+#include "Tracking.h"
+#include "Map.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
+#include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 
 namespace module {
 namespace vision {
 
-    //class Map;
-    //class Tracking;
-    //class LocalMapping;
-    //class LoopClosing;
+    class Map;
+    class Tracking;
+    class LocalMapping;
+    class LoopClosing;
 
     class System
     {
@@ -46,13 +47,14 @@ namespace vision {
         // Input sensor
         enum eSensor{
             MONOCULAR=0,
-            STEREO=1
+            STEREO=1,
+            RGBD=2
         };
 
     public:
 
-        // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-        System(const std::string &strVocFile, const eSensor sensor);
+        // Initialize the SLAM system. It launches the Local Mapping and Loop Closing threads.
+        void Initialize(const std::string &strVocFile,const std::string &strSettingsFile, const eSensor sensor);
 
         // Proccess the given stereo frame. Images must be synchronized and rectified.
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -62,30 +64,36 @@ namespace vision {
         // Proccess the given monocular frame
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
         // Returns the camera pose (empty if tracking fails).
-        //cv::Mat TrackMonocular(const cv::Mat &im, const double &timestamp);
+        cv::Mat TrackMonocular(const cv::Mat &im,const double &timestamp);
+
+        // Launch LocalMapping
+        void launchLocalMapping();
+
+        // Launch LoopClosing
+        void launchLoopClosing();
 
         // This stops local mapping thread (map building) and performs only camera tracking.
-        //void ActivateLocalizationMode();
+        void ActivateLocalizationMode();
         // This resumes local mapping thread and performs SLAM again.
-        //void DeactivateLocalizationMode();
+        void DeactivateLocalizationMode();
 
         // Returns true if there have been a big map change (loop closure, global BA)
         // since last call to this function
-        //bool MapChanged();
+        bool MapChanged();
 
         // Reset the system (clear map)
-        //void Reset();
+        void Reset();
 
         // All threads will be requested to finish.
         // It waits until all threads have finished.
         // This function must be called before saving the trajectory.
-        //void Shutdown();
+        void Shutdown();
 
         // Information from most recent processed frame
         // You can call this right after TrackMonocular (or stereo or RGBD)
-        //int GetTrackingState();
-        //std::vector<MapPoint*> GetTrackedMapPoints();
-        //std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+        int GetTrackingState();
+        std::vector<MapPoint*> GetTrackedMapPoints();
+        std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
 
     private:
 
@@ -96,37 +104,37 @@ namespace vision {
         ORBVocabulary* mpVocabulary;
 
         // KeyFrame database for place recognition (relocalization and loop detection).
-        //KeyFrameDatabase* mpKeyFrameDatabase;
+        KeyFrameDatabase* mpKeyFrameDatabase;
 
         // Map structure that stores the pointers to all KeyFrames and MapPoints.
-        //Map* mpMap;
+        Map* mpMap;
 
         // Tracker. It receives a frame and computes the associated camera pose.
         // It also decides when to insert a new keyframe, create some new MapPoints and
         // performs relocalization if tracking fails.
-        //Tracking* mpTracker;
+        Tracking* mpTracker;
 
         // Local Mapper. It manages the local map and performs local bundle adjustment.
-        //LocalMapping* mpLocalMapper;
+        LocalMapping* mpLocalMapper;
 
         // Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
         // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
-        //LoopClosing* mpLoopCloser;
+        LoopClosing* mpLoopCloser;
 
         // Reset flag
-        //std::mutex mMutexReset;
+        std::mutex mMutexReset;
         bool mbReset;
 
         // Change mode flags
-        //std::mutex mMutexMode;
+        std::mutex mMutexMode;
         bool mbActivateLocalizationMode;
         bool mbDeactivateLocalizationMode;
 
         // Tracking state
         int mTrackingState;
-        //std::vector<MapPoint*> mTrackedMapPoints;
-        //std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
-        //std::mutex mMutexState;
+        std::vector<MapPoint*> mTrackedMapPoints;
+        std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
+        std::mutex mMutexState;
     };
 
 }  // namespace vision

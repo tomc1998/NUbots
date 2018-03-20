@@ -28,6 +28,10 @@
 namespace module {
 namespace vision {
 
+    class LaunchMapping{};
+    class LaunchLoopClosing{};
+    class LaunchImageLoading{};
+
     class VisualSLAM : public NUClear::Reactor {
 
     public:
@@ -43,7 +47,9 @@ namespace vision {
         std::vector<std::string> vstrImageFilenames;
     		std::vector<std::chrono::microseconds> vTimestamps; //in microseconds
         std::string strVocFile;
+        std::string strSettingsFile;
         System::eSensor cameraCombination;
+        System SLAM;
     		// Number of images to process
     		int nImages;
 
@@ -58,6 +64,11 @@ namespace vision {
 
         // When we started this loop
         std::chrono::microseconds loop_start_timestamp;
+
+        // Timer variables for calculating average framerate
+        NUClear::clock::time_point process_loop_start_time;
+        NUClear::clock::time_point process_loop_end_time;
+
 
         // The first time that appears in the file
         std::chrono::microseconds first_timecode;

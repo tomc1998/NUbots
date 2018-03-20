@@ -44,14 +44,21 @@ namespace vision {
         on<Configuration>("VisualSLAM.yaml").then([this](const Configuration& config) { 
             imageWidth  = config["imageWidth"].as<uint>();
             imageHeight = config["imageHeight"].as<uint>();
+            strSettingsFile = config["strSettingsFile"].as<std::string>();
             strVocFile = config["strVocFile"].as<std::string>();
             cameraCombination = static_cast<System::eSensor>(config["cameraCombination"].as<int>());
         });
 
         on<Startup>().then([this] {
 
-            System SLAM(strVocFile,cameraCombination);
-            
+            SLAM.Initialize(strVocFile,strSettingsFile,cameraCombination);
+            auto pLaunchLocalMapping = std::make_unique<LaunchMapping>();
+            auto pLaunchLoopClosing  = std::make_unique<LaunchLoopClosing>();
+            auto pLaunchImageLoading = std::make_unique<LaunchImageLoading>();
+            emit(std::move(pLaunchLocalMapping));
+            emit(std::move(pLaunchLoopClosing));
+            emit(std::move(pLaunchImageLoading));
+
             // Loading in timestamp and image filepath data
             LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
             nImages = vstrImageFilenames.size();
@@ -68,29 +75,6 @@ namespace vision {
             cameraParameters->centreOffset           << 397,288;
 
             emit(std::move(cameraParameters));
-
-
-            for (curImage = 0; curImage < nImages; curImage++) {
-                // Load image
-                cv::Mat raw_image;
-                raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
-
-                // Converting matrix to a concatenated long vector
-                std::vector<uint8_t> data(imageHeight * imageWidth, 0);
-                if (!raw_image.data)
-                    std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
-                else 
-                    data.assign(raw_image.datastart, raw_image.dataend);
-
-                // Create the image 
-                auto image = std::make_unique<Image>();
-                image->format     = utility::vision::FOURCC::GREY;
-                image->dimensions = {imageWidth, imageHeight};
-                image->data       = data;
-
-                std::cout << "Emitting Image #" << curImage << "/" << nImages <<std::endl;
-                emit<Scope::DIRECT>(std::move(image));
-            }
         });
 
         // Emitting loaded images at the correct time
@@ -146,15 +130,85 @@ namespace vision {
         });
         */
 
-        // Visual Odometry - motion estimation thread
+        // Emitting Images as fast as they can be processed
+        on<Trigger<LaunchImageLoading>>().then([this]()
+        {
+            process_loop_start_time = NUClear::clock::now();
+            for (curImage = 0; curImage < nImages; curImage++) {
+                // Load image
+                cv::Mat raw_image;
+                raw_image = cv::imread(vstrImageFilenames[curImage], CV_LOAD_IMAGE_UNCHANGED);
+
+                // Converting matrix to a concatenated long vector
+                std::vector<uint8_t> data(imageHeight * imageWidth, 0);
+                if (!raw_image.data)
+                    std::cout << "Could not open or find the image at " << vstrImageFilenames[curImage] << std::endl;
+                else 
+                    data.assign(raw_image.datastart, raw_image.dataend);
+
+                // Create the image 
+                auto image = std::make_unique<Image>();
+                image->format     = utility::vision::FOURCC::GREY;
+                image->dimensions = {imageWidth, imageHeight};
+                image->data       = data;
+                image->timestamp  = NUClear::clock::now();
+                if (curImage == 72){
+                    int aaa = 0;
+                }
+                if (curImage == 73){
+                    int bbb = 0;
+                }
+
+                std::cout << "Emitting Image #" << curImage << "/" << nImages <<std::endl;
+                emit<Scope::DIRECT>(std::move(image));
+            }
+            process_loop_end_time = NUClear::clock::now();
+            // Stop all threads
+            SLAM.Shutdown();
+
+            //Calculate Average Frame Rate
+            double process_loop_timer = std::chrono::duration_cast<std::chrono::duration<double>>(
+                         process_loop_end_time - process_loop_start_time)
+                         .count();
+          double processLoopTimerAvg = process_loop_timer / nImages;
+          double frameRate = 1 / processLoopTimerAvg;
+
+          std::cout << "Frame rate: " << frameRate << std::endl;
+
+        });
+
+        // Tracking thread
         on<Trigger<Image>,With<CameraParameters>, Single>().then([this]
             (const Image& newImage,
              const CameraParameters& cam) {
 
 
-            std::cout << "Image finished processing" << std::endl;
+            // Converting image.data from vector to matrix
+            // Justification for using const_cast: 
+            // I need to copy across the data from const Image& newImage into a cv::Mat.
+            // OpenCV won't let me create a Mat from a const source because the newly created Mat points to the original  
+            // data, and it cannot guarantee it won't modify the data. I need to use const_cast to create the Mat, so 
+            // I const_cast the Mat at it's creation to ensure I don't modify it.
+            const cv::Mat im(newImage.dimensions[1],newImage.dimensions[0],CV_8UC1,const_cast<uint8_t*>(newImage.data.data()));
+
+            // Cropping image to allow opencv calibration to work properly
+            cv::Rect myROI(256, 205, 768, 614);
+            SLAM.TrackMonocular(im(myROI),newImage.timestamp.time_since_epoch().count());
 
         });
+
+        // Mapping thread
+        on<Trigger<LaunchMapping>>().then([this]()
+        {
+            SLAM.launchLocalMapping();
+        });
+        
+        // Loop Closing thread
+        on<Trigger<LaunchLoopClosing>>().then([this]()
+        {
+            SLAM.launchLoopClosing();
+        });
+        
 
     }
 
