@@ -5,10 +5,10 @@ NUCLEAR_ROLE(
     extension::FileWatcher
 
     #Sensors
-    input::Camera
-    platform::darwin::HardwareIO
-    platform::darwin::SensorFilter
-    
+    #input::Camera
+    #platform::darwin::HardwareIO
+    #platform::darwin::SensorFilter
+
     #Vision
     vision::VisualSLAM
 

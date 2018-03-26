@@ -22,8 +22,8 @@
 #include "message/input/CameraParameters.h"
 #include "extension/Configuration.h"
 #include "opencv2/core/core.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "utility/vision/fourcc.h"
+//#include "opencv2/highgui/highgui.hpp"
+//#include "utility/vision/fourcc.h"
 #include "stdio.h"
 #include <iostream>
 #include <fstream>
