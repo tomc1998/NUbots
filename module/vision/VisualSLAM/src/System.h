@@ -96,6 +96,7 @@ namespace vision {
         int GetTrackingState();
         std::vector<MapPoint*> GetTrackedMapPoints();
         std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+        std::size_t getNumberOfKeyFrames();
 
     private:
 

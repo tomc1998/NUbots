@@ -257,6 +257,11 @@ namespace vision {
 	    return mTrackedKeyPointsUn;
 	}
 
+	std::size_t System::getNumberOfKeyFrames()
+	{
+		return mpMap->getNumberOfKeyFrames();
+	}
+
 
 
 }  // namespace vision

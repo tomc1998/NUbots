@@ -4,7 +4,11 @@ NUCLEAR_ROLE(
     support::logging::ConsoleLogHandler
     extension::FileWatcher
 
-
+    #Sensors
+    input::Camera
+    platform::darwin::HardwareIO
+    platform::darwin::SensorFilter
+    
     #Vision
     vision::VisualSLAM
 

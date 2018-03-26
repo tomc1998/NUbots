@@ -129,7 +129,7 @@ namespace vision {
             }
         });
         */
-
+        /*
         // Emitting Images as fast as they can be processed
         on<Trigger<LaunchImageLoading>>().then([this]()
         {
@@ -152,12 +152,6 @@ namespace vision {
                 image->dimensions = {imageWidth, imageHeight};
                 image->data       = data;
                 image->timestamp  = NUClear::clock::now();
-                if (curImage == 72){
-                    int aaa = 0;
-                }
-                if (curImage == 73){
-                    int bbb = 0;
-                }
 
                 std::cout << "Emitting Image #" << curImage << "/" << nImages <<std::endl;
                 emit<Scope::DIRECT>(std::move(image));
@@ -177,16 +171,12 @@ namespace vision {
             // Save camera trajectory
             SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
 
-            // Trigger print Tcw
-            auto pPrintTcwFlag = std::make_unique<PrintTcwFlag>();
-            emit(std::move(pPrintTcwFlag));
-
         });
+        */
 
         // Tracking thread
-        on<Trigger<Image>,With<CameraParameters>, Single>().then([this]
-            (const Image& newImage,
-             const CameraParameters& cam) {
+        on<Trigger<Image>, Single>().then([this]
+            (const Image& newImage) {
 
 
             // Converting image.data from vector to matrix
@@ -207,12 +197,29 @@ namespace vision {
             auto transformCW = make_unique<Transform_CW>();
             transformCW->Tcw = Tcw;
             emit(std::move(transformCW));
+
+            if (SLAM.getNumberOfKeyFrames() >= 130)
+            {
+                process_loop_end_time = NUClear::clock::now();
+                SLAM.Shutdown();
+
+                //Calculate Average Frame Rate
+                double process_loop_timer = std::chrono::duration_cast<std::chrono::duration<double>>(
+                         process_loop_end_time - process_loop_start_time)
+                         .count();
+                double processLoopTimerAvg = process_loop_timer / nImages;
+                double frameRate = 1 / processLoopTimerAvg;
+                std::cout << "Frame rate: " << frameRate << std::endl;
+                // Save camera trajectory
+                SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+            }
         });
 
         // Mapping thread
         on<Trigger<LaunchMapping>>().then([this]()
         {
             SLAM.launchLocalMapping();
+            process_loop_start_time = NUClear::clock::now();
         });
         
         // Loop Closing thread
@@ -220,25 +227,6 @@ namespace vision {
         {
             SLAM.launchLoopClosing();
         });
-
-        // Print Tcw
-        on<Trigger<PrintTcwFlag>,With<Transform_CW>>().then([this]
-            (const PrintTcwFlag& printTcwFlag,
-             const Transform_CW& transformCW){
-
-            // Printing Tcw    
-            cv::Mat Tcw = transformCW.Tcw;
-            cout << "Tcw [" << Tcw.rows << "," << Tcw.cols << "]:" << endl;
-            for (int m = 0; m < Tcw.rows; m++)
-            {
-                for (int n = 0; n < Tcw.cols; n++)
-                {
-                    cout << Tcw.at<double>(m,n) << " ";
-                }
-                cout << endl;
-            }
-        });
-        
 
     }
 

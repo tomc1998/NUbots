@@ -130,5 +130,11 @@ void Map::clear()
     mvpKeyFrameOrigins.clear();
 }
 
+std::size_t Map::getNumberOfKeyFrames()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    return mspKeyFrames.size();
+}
+
 }  // namespace vision
 }  // namespace module
