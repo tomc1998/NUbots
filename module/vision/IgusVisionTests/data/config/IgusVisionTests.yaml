@@ -9,4 +9,5 @@ test_point_screen: [0,0]
 goal_position: [2,1,-1]
 goal_direction: [0,0,1]
 
+
 visual_horizon_height: 0.5
