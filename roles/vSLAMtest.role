@@ -5,7 +5,7 @@ NUCLEAR_ROLE(
     extension::FileWatcher
 
     #Sensors
-    #input::Camera
+    input::Camera
     #platform::darwin::HardwareIO
     #platform::darwin::SensorFilter
 

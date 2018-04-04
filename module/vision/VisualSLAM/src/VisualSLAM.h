@@ -60,7 +60,9 @@ namespace vision {
     		int nImages;
 
     		// Current image number we are processing
-    		int curImage;
+    		int curImage; // current image being prepared for emission
+            int curFrame = 0; // current image frame received
+
 
   		  // When we started playing this file
         NUClear::clock::time_point start_time;

@@ -22,7 +22,8 @@
 #include "message/input/CameraParameters.h"
 #include "extension/Configuration.h"
 #include "opencv2/core/core.hpp"
-//#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgcodecs/imgcodecs.hpp"
 //#include "utility/vision/fourcc.h"
 #include "stdio.h"
 #include <iostream>
@@ -60,10 +61,13 @@ namespace vision {
             emit(std::move(pLaunchImageLoading));
 
             // Loading in timestamp and image filepath data
-            LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
-            nImages = vstrImageFilenames.size();
+            //LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
+            //LoadImages("/home/vagrant/Datasets/LoungeRoom_Dataset2/", vstrImageFilenames, vTimestamps);
+            //nImages = vstrImageFilenames.size();
+
 
             // Camera parameters when running from desktop
+            /*
             auto cameraParameters = std::make_unique<CameraParameters>();
 
             // Generic camera parameters
@@ -75,6 +79,8 @@ namespace vision {
             cameraParameters->centreOffset           << 397,288;
 
             emit(std::move(cameraParameters));
+            */
+            std::cout << "Setup Finished" << std::endl;
         });
 
         // Emitting loaded images at the correct time
@@ -110,6 +116,7 @@ namespace vision {
                     image->format     = utility::vision::FOURCC::GREY;
                     image->dimensions = {imageWidth, imageHeight};
                     image->data       = data;
+                    image->camera_id  = 1;
 
                     // This is our first image
                     if (curImage == 0) {
@@ -148,10 +155,10 @@ namespace vision {
 
                 // Create the image 
                 auto image = std::make_unique<Image>();
-                image->format     = utility::vision::FOURCC::GREY;
                 image->dimensions = {imageWidth, imageHeight};
                 image->data       = data;
                 image->timestamp  = NUClear::clock::now();
+                image->camera_id  = 1;
 
                 std::cout << "Emitting Image #" << curImage << "/" << nImages <<std::endl;
                 emit<Scope::DIRECT>(std::move(image));
@@ -178,46 +185,67 @@ namespace vision {
         on<Trigger<Image>, Single>().then([this]
             (const Image& newImage) {
 
-
-            // Converting image.data from vector to matrix
-            // Justification for using const_cast: 
-            // I need to copy across the data from const Image& newImage into a cv::Mat.
-            // OpenCV won't let me create a Mat from a const source because the newly created Mat points to the original  
-            // data, and it cannot guarantee it won't modify the data. I need to use const_cast to create the Mat, so 
-            // I const_cast the Mat at it's creation to ensure I don't modify it.
-            const cv::Mat im(newImage.dimensions[1],newImage.dimensions[0],CV_8UC1,const_cast<uint8_t*>(newImage.data.data()));
-
-            // Cropping image to allow opencv calibration to work properly
-            cv::Rect myROI(256, 205, 768, 614);
-
-            // Process Image
-            cv::Mat Tcw = SLAM.TrackMonocular(im(myROI),newImage.timestamp.time_since_epoch().count());
-
-            // Emit Transform
-            auto transformCW = make_unique<Transform_CW>();
-            transformCW->Tcw = Tcw;
-            emit(std::move(transformCW));
-
-            if (SLAM.getNumberOfKeyFrames() >= 130)
+            if (newImage.camera_id == 1) // Just using one of the cameras
             {
-                process_loop_end_time = NUClear::clock::now();
-                SLAM.Shutdown();
 
-                //Calculate Average Frame Rate
-                double process_loop_timer = std::chrono::duration_cast<std::chrono::duration<double>>(
-                         process_loop_end_time - process_loop_start_time)
-                         .count();
-                double processLoopTimerAvg = process_loop_timer / nImages;
-                double frameRate = 1 / processLoopTimerAvg;
-                std::cout << "Frame rate: " << frameRate << std::endl;
-                // Save camera trajectory
-                SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+                curFrame++;
+                std::cout << "Received Image #" << curFrame << " from camera ID: " << newImage.camera_id << std::endl;
+                // Converting image.data from vector to matrix
+                // Justification for using const_cast: 
+                // I need to copy across the data from const Image& newImage into a cv::Mat.
+                // OpenCV won't let me create a Mat from a const source because the newly created Mat points to the original  
+                // data, and it cannot guarantee it won't modify the data. I need to use const_cast to create the Mat, so 
+                // I const_cast the Mat at it's creation to ensure I don't modify it. I then clone to a new Mat which  
+                // does copy the data so I can modify it safely.
+                const cv::Mat im_const(newImage.dimensions[1],newImage.dimensions[0],CV_8UC1,const_cast<uint8_t*>(newImage.data.data()));
+                cv::Mat im_bayer = im_const.clone();
+
+                // Converting image from bayer to grayscale
+                cv::Mat im_rgb;
+                cv::Mat im_gray;
+                cv::cvtColor(im_bayer,im_rgb,cv::COLOR_BayerBG2RGB);
+                cv::cvtColor(im_rgb,im_gray,cv::COLOR_RGB2GRAY);
+
+                // Cropping image to allow opencv calibration to work properly
+                cv::Rect myROI(256, 205, 768, 614);
+
+                
+                
+                //std::string strPathSaveImageGRAY = "iGusGrayImage" + std::to_string(curFrame) +".jpg";
+                //cv::imwrite(strPathSaveImageGRAY,im_gray);
+                
+                // Process Image
+                cv::Mat Tcw = SLAM.TrackMonocular(im_gray(myROI),newImage.timestamp.time_since_epoch().count());
+
+                
+
+                // Emit Transform
+                auto transformCW = make_unique<Transform_CW>();
+                transformCW->Tcw = Tcw;
+                emit(std::move(transformCW));
+
+                if (curFrame  == 1500)
+                {
+                    process_loop_end_time = NUClear::clock::now();
+                    SLAM.Shutdown();
+
+                    //Calculate Average Frame Rate
+                    double process_loop_timer = std::chrono::duration_cast<std::chrono::duration<double>>(
+                             process_loop_end_time - process_loop_start_time)
+                             .count();
+                    double processLoopTimerAvg = process_loop_timer / curFrame;
+                    double frameRate = 1 / processLoopTimerAvg;
+                    std::cout << "Frame rate: " << frameRate << std::endl;
+                    // Save camera trajectory
+                    SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+                }
             }
         });
 
         // Mapping thread
         on<Trigger<LaunchMapping>>().then([this]()
         {
+            std::cout << "Mapping Launched" << endl;
             SLAM.launchLocalMapping();
             process_loop_start_time = NUClear::clock::now();
         });
@@ -233,6 +261,7 @@ namespace vision {
     void VisualSLAM::LoadImages(const std::string strPathToSequence,
                                 std::vector<std::string> &vstrImageFilenames,
                                 std::vector<std::chrono::microseconds> &vTimestamps) {
+        
         std::ifstream fTimes;
         std::string strPathTimeFile = strPathToSequence + "TimeStamp.txt";
         fTimes.open(strPathTimeFile.c_str());
@@ -248,7 +277,7 @@ namespace vision {
                 vTimestamps.push_back(tt); // in microseconds
             }
         }
-
+        
         std::string strPrefixLeft = strPathToSequence;
 
         const int nTimes = vTimestamps.size();

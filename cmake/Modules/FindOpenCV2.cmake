@@ -41,20 +41,20 @@ find_path(OpenCV2_ROOT_INC_DIR NAMES opencv2/opencv.hpp
 
 find_path(OpenCV2_CORE_INCLUDE_DIR       NAMES core.hpp         PATHS "${OpenCV2_ROOT_INC_DIR}/opencv2/core")
 find_path(OpenCV2_IMGPROC_INCLUDE_DIR    NAMES imgproc.hpp      PATHS "${OpenCV2_ROOT_INC_DIR}/opencv2/imgproc")
-find_path(OpenCV2_CONTRIB_INCLUDE_DIR    NAMES contrib.hpp      PATHS "${OpenCV2_ROOT_INC_DIR}/opencv2/contrib")
 find_path(OpenCV2_HIGHGUI_INCLUDE_DIR    NAMES highgui.hpp      PATHS "${OpenCV2_ROOT_INC_DIR}/opencv2/highgui")
 find_path(OpenCV2_FEATURES2D_INCLUDE_DIR NAMES features2d.hpp   PATHS "${OpenCV2_ROOT_INC_DIR}/opencv2/features2d")
 find_path(OpenCV2_CALIB3D_INCLUDE_DIR    NAMES calib3d.hpp      PATHS "${OpenCV2_ROOT_INC_DIR}/opencv2/calib3d")
+find_path(OpenCV2_IMGCODECS_INCLUDE_DIR  NAMES imgcodecs.hpp    PATHS "${OpenCV2_ROOT_INC_DIR}/opencv2/imgcodecs")
 
 set(OpenCV2_INCLUDE_DIRS
     ${OpenCV2_ROOT_INC_DIR}
     ${OpenCV2_ROOT_INC_DIR}/opencv2
     ${OpenCV2_CORE_INCLUDE_DIR}
     ${OpenCV2_IMGPROC_INCLUDE_DIR}
-    ${OpenCV2_CONTRIB_INCLUDE_DIR}
     ${OpenCV2_HIGHGUI_INCLUDE_DIR}
     ${OpenCV2_FEATURES2D_INCLUDE_DIR}
-    ${OpenCV2_CALIB3D_INCLUDE_DIR})
+    ${OpenCV2_CALIB3D_INCLUDE_DIR}
+    ${OpenCV2_IMGCODECS_INCLUDE_DIR})
 
 # absolute path to all libraries
 # set(OPENCV2_LIBRARY_SEARCH_PATHS "${OpenCV2_ROOT_DIR}/lib")
@@ -71,31 +71,31 @@ list(APPEND OPENCV2_LIBRARY_SEARCH_PATHS "/usr/lib")
 #--- FIND RELEASE LIBRARIES
 find_library(OpenCV2_CORE_LIBRARY_REL       NAMES opencv_core opencv_core230 opencv_core220 opencv_core2410                         PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
 find_library(OpenCV2_IMGPROC_LIBRARY_REL    NAMES opencv_imgproc opencv_imgproc230 opencv_imgproc220 opencv_imgproc2410             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
-find_library(OpenCV2_CONTRIB_LIBRARY_REL    NAMES opencv_contrib opencv_contrib230 opencv_contrib220 opencv_contrib2410             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
 find_library(OpenCV2_HIGHGUI_LIBRARY_REL    NAMES opencv_highgui opencv_highgui230 opencv_highgui220 opencv_highgui2410             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
 find_library(OpenCV2_FEATURES2D_LIBRARY_REL NAMES opencv_features2d opencv_features2d230 opencv_features2d220 opencv_features2d2410 PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
 find_library(OpenCV2_CALIB3D_LIBRARY_REL    NAMES opencv_calib3d opencv_calib3d230 opencv_calib3d220 opencv_calib3d2410             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
+find_library(OpenCV2_IMGCODECS_LIBRARY_REL  NAMES opencv_imgcodecs opencv_imgcodecs230 opencv_imgcodecs220 opencv_imgcodecs2410     PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
 list(APPEND OpenCV2_LIBRARIES_REL ${OpenCV2_CORE_LIBRARY_REL})
 list(APPEND OpenCV2_LIBRARIES_REL ${OpenCV2_IMGPROC_LIBRARY_REL})
-list(APPEND OpenCV2_LIBRARIES_REL ${OpenCV2_CONTRIB_LIBRARY_REL})
 list(APPEND OpenCV2_LIBRARIES_REL ${OpenCV2_HIGHGUI_LIBRARY_REL})
 list(APPEND OpenCV2_LIBRARIES_REL ${OpenCV2_FEATURES2D_LIBRARY_REL})
 list(APPEND OpenCV2_LIBRARIES_REL ${OpenCV2_CALIB3D_LIBRARY_REL})
+list(APPEND OpenCV2_LIBRARIES_REL ${OpenCV2_IMGCODECS_LIBRARY_REL})
 
 #--- FIND DEBUG LIBRARIES
 if(WIN32)
     find_library(OpenCV2_CORE_LIBRARY_DEB       NAMES opencv_cored opencv_core230d opencv_core220d opencv_core2410d                         PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
     find_library(OpenCV2_IMGPROC_LIBRARY_DEB    NAMES opencv_imgprocd opencv_imgproc230d opencv_imgproc220d opencv_imgproc2410d             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
-    find_library(OpenCV2_CONTRIB_LIBRARY_DEB    NAMES opencv_contribd opencv_contrib230d opencv_contrib220d opencv_contrib2410d             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
     find_library(OpenCV2_HIGHGUI_LIBRARY_DEB    NAMES opencv_highguid opencv_highgui230d opencv_highgui220d opencv_highgui2410d             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
     find_library(OpenCV2_FEATURES2D_LIBRARY_DEB NAMES opencv_features2dd opencv_features2d230d opencv_features2d220d opencv_features2d2410d PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
     find_library(OpenCV2_CALIB3D_LIBRARY_DEB    NAMES opencv_calib3dd opencv_calib3d230d opencv_calib3d220d opencv_calib3d2410d             PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
+    find_library(OpenCV2_IMGCODECS_LIBRARY_DEB  NAMES opencv_imgcodecsd opencv_imgcodecs230d opencv_imgcodecs220d opencv_imgcodecs2410d     PATHS ${OPENCV2_LIBRARY_SEARCH_PATHS})
     list(APPEND OpenCV2_LIBRARIES_DEB ${OpenCV2_CORE_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES_DEB ${OpenCV2_IMGPROC_LIBRARY_DEB})
-    list(APPEND OpenCV2_LIBRARIES_DEB ${OpenCV2_CONTRIB_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES_DEB ${OpenCV2_HIGHGUI_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES_DEB ${OpenCV2_FEATURES2D_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES_DEB ${OpenCV2_CALIB3D_LIBRARY_DEB})
+    list(APPEND OpenCV2_LIBRARIES_DEB ${OpenCV2_IMGCODECS_LIBRARY_DEB})
 endif()
 
 #--- Setup cross-config libraries
@@ -103,17 +103,17 @@ set(OpenCV2_LIBRARIES "")
 if(WIN32)
     list(APPEND OpenCV2_LIBRARIES optimized ${OpenCV2_CORE_LIBRARY_REL}       debug ${OpenCV2_CORE_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES optimized ${OpenCV2_IMGPROC_LIBRARY_REL}    debug ${OpenCV2_IMGPROC_LIBRARY_DEB})
-    list(APPEND OpenCV2_LIBRARIES optimized ${OpenCV2_CONTRIB_LIBRARY_REL}    debug ${OpenCV2_CONTRIB_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES optimized ${OpenCV2_HIGHGUI_LIBRARY_REL}    debug ${OpenCV2_HIGHGUI_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES optimized ${OpenCV2_FEATURES2D_LIBRARY_REL} debug ${OpenCV2_FEATURES2D_LIBRARY_DEB})
     list(APPEND OpenCV2_LIBRARIES optimized ${OpenCV2_CALIB3D_LIBRARY_REL}    debug ${OpenCV2_CALIB3D_LIBRARY_DEB})
+    list(APPEND OpenCV2_LIBRARIES optimized ${OpenCV2_IMGCODECS_LIBRARY_REL}  debug ${OpenCV2_IMGCODECS_LIBRARY_DEB})
 else()
     list(APPEND OpenCV2_LIBRARIES ${OpenCV2_CORE_LIBRARY_REL}   )
     list(APPEND OpenCV2_LIBRARIES ${OpenCV2_IMGPROC_LIBRARY_REL})
-    list(APPEND OpenCV2_LIBRARIES ${OpenCV2_CONTRIB_LIBRARY_REL})
     list(APPEND OpenCV2_LIBRARIES ${OpenCV2_HIGHGUI_LIBRARY_REL})
     list(APPEND OpenCV2_LIBRARIES ${OpenCV2_FEATURES2D_LIBRARY_REL})
     list(APPEND OpenCV2_LIBRARIES ${OpenCV2_CALIB3D_LIBRARY_REL})
+    list(APPEND OpenCV2_LIBRARIES ${OpenCV2_IMGCODECS_LIBRARY_REL})
 endif()
 
 #--- Verifies everything (include) was found

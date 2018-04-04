@@ -1,5 +1,7 @@
 imageWidth: 1280
 imageHeight: 1024
-strSettingsFile: "/home/vagrant/NUbots/module/vision/VisualSLAM/data/config/ORBsettings.yaml"
-strVocFile: "/home/vagrant/NUbots/module/vision/VisualSLAM/data/Vocabulary/ORBvoc.txt"
+strSettingsFile: "./Vocabulary/ORBsettings.yaml"
+#strSettingsFile: "/home/vagrant/NUbots/module/vision/VisualSLAM/data/config/ORBsettings.yaml"
+strVocFile: "./Vocabulary/ORBvoc.txt"
+#strVocFile: "/home/vagrant/NUbots/module/vision/VisualSLAM/data/Vocabulary/ORBvoc.txt"
 cameraCombination: 0
