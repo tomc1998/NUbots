@@ -48,6 +48,7 @@ namespace vision {
             strSettingsFile = config["strSettingsFile"].as<std::string>();
             strVocFile = config["strVocFile"].as<std::string>();
             cameraCombination = static_cast<System::eSensor>(config["cameraCombination"].as<int>());
+            logFilePath="TimeStampLog.txt";
         });
 
         on<Startup>().then([this] {
@@ -59,6 +60,8 @@ namespace vision {
             emit(std::move(pLaunchLocalMapping));
             emit(std::move(pLaunchLoopClosing));
             emit(std::move(pLaunchImageLoading));
+            logFile.open(logFilePath, std::ios::out | std::ios::binary);
+
 
             // Loading in timestamp and image filepath data
             //LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
@@ -187,9 +190,9 @@ namespace vision {
 
             if (newImage.camera_id == 1) // Just using one of the cameras
             {
-
+                auto frameStart = NUClear::clock::now();
                 curFrame++;
-                std::cout << "Received Image #" << curFrame << " from camera ID: " << newImage.camera_id << std::endl;
+                //std::cout << "Received Image #" << curFrame << " from camera ID: " << newImage.camera_id << std::endl;
                 // Converting image.data from vector to matrix
                 // Justification for using const_cast: 
                 // I need to copy across the data from const Image& newImage into a cv::Mat.
@@ -217,21 +220,37 @@ namespace vision {
                 // Process Image
                 cv::Mat Tcw = SLAM.TrackMonocular(im_gray(myROI),newImage.timestamp.time_since_epoch().count());
 
-                
+                // Log timestamp
+                if ((logFile.is_open() == true) && (logFile.good() == true)) {
+                    logFile << frameStart.time_since_epoch().count() << " " << NUClear::clock::now().time_since_epoch().count();
+                    for (int m = 0; m < Tcw.rows; m++)
+                    {
+                        for (int n = 0; n < Tcw.cols; n++)
+                        {
+                            logFile << " " << Tcw.at<double>(m,n);
+                        }
+                    }
+                    logFile << std::endl;
+                }
+                else 
+                {
+                    std::cout << "Couldnt open timestamplog" << std::endl;
+                }
 
                 // Emit Transform
                 auto transformCW = make_unique<Transform_CW>();
                 transformCW->Tcw = Tcw;
                 emit(std::move(transformCW));
 
-                if (curFrame  == 1500)
+                if (curFrame%200 == 0) // Regularly reprint  data
                 {
                     process_loop_end_time = NUClear::clock::now();
-                    SLAM.Shutdown();
+                    //SLAM.Shutdown();
 
                     //Calculate Average Frame Rate
                     double process_loop_timer = std::chrono::duration_cast<std::chrono::duration<double>>(
-                             process_loop_end_time - process_loop_start_time)
+                             std::chrono::duration_cast<std::chrono::seconds>(
+                             process_loop_end_time - process_loop_start_time))
                              .count();
                     double processLoopTimerAvg = process_loop_timer / curFrame;
                     double frameRate = 1 / processLoopTimerAvg;

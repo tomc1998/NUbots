@@ -83,6 +83,9 @@ namespace vision {
     		uint imageWidth;
     		uint imageHeight;
 
+        std::ofstream logFile;
+        std::string logFilePath;
+
 
     };
 }

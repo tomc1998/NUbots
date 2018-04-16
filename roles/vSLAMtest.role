@@ -6,11 +6,15 @@ NUCLEAR_ROLE(
 
     #Sensors
     input::Camera
-    #platform::darwin::HardwareIO
-    #platform::darwin::SensorFilter
+    platform::darwin::HardwareIO
+    platform::darwin::SensorFilter
 
     #Vision
     vision::VisualSLAM
+
+    #Datalogging
+    support::logging::DataLogging
+    #input::NatNet
 
 
 )

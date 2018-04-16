@@ -78,3 +78,4 @@ tags
 /g2o/
 /opencv-3.2.0/
 /protoc3/
+*.json

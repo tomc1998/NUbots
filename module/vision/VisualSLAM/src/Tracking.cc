@@ -321,6 +321,7 @@ void Tracking::Track()
 
             if(mState==LOST)
             {
+                std::cout << "Tracking Lost" << std::endl;
                 bOK = Relocalization();
             }
             else

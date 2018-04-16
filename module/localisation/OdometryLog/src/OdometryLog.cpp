@@ -39,13 +39,15 @@ namespace localisation {
                 logFile.open(logFilePath, std::ios::out | std::ios::binary);
 
                 if ((logFile.is_open() == true) && (logFile.good() == true)) {
-                    logFile << "Time, x_pos, y_pos, angle ,"
+                    logFile << "Time, x_pos, y_pos, angle" << std::endl;
+                            /*
                             << "RightHipPitchPosition, RightHipRollPosition, RightHipYawPosition,"
                             << "LeftHipPitchPosition, LeftHipRollPosition,LeftHipYawPosition, "
                             << "RightKneePosition, LeftKneePosition, "
                             << "RightAnklePitchPosition, RightAnkleRollPosition ,RightAnkleYawPosition,"
                             << "LeftAnklePitchPosition, LeftAnkleRollPosition, LeftAnkleYawPosition "
                             std::endl;
+                            */
                 }
 
                 else {
@@ -62,9 +64,9 @@ namespace localisation {
 
                 if ((logFile.is_open() == true) && (logFile.good() == true)) {
                     logFile << "Localisation Orientation reset This direction is now forward,"
-                            << Trw.x() << "," << trw.y() << "," << trw.angle() << ","
+                            << Trw.x() << "," << Trw.y() << "," << Trw.angle() << std::endl; /*","
                             <<"blank , blank , blank, blank, blank, blank , blank, blank, blank,"
-                            << "blank , blank, blank, blank, blank " << std::endl;
+                            << "blank , blank, blank, blank, blank " << std::endl; */
 
                 }
                  else {
@@ -76,13 +78,14 @@ namespace localisation {
         on<Trigger<Sensors>, Sync<OdometryLog>, Single>().then("Odometry Loc", [this](const Sensors& sensors) {
 
               // If the file isn't open skip
-            if (!log_file.is_open()) {{
+            if (!logFile.is_open()) {{
                 return;
             }}
                 /* get current time */
             auto timestamp = std::chrono::high_resolution_clock::now();
 
                 /* get current joint angles */
+            /*
             float RightHipPitchPosition   = sensors.servo[ServoID::R_HIP_PITCH].presentPosition;
             float RightHipRollPosition   = sensors.servo[ServoID::R_HIP_ROLL].presentPosition;
             float RightHipYawPosition   = sensors.servo[ServoID::R_HIP_YAW].presentPosition;
@@ -101,20 +104,21 @@ namespace localisation {
             float LeftAnklePitchPosition  = sensors.servo[ServoID::L_ANKLE_PITCH].presentPosition;
             float LeftAnkleRollPosition = sensors.servo[ServoID::L_ANKLE_ROLL].presentPosition;
             float LeftAnkleYawPosition = sensors.servo[ServoID::L_ANKLE_YAW].presentPosition;
-
+            */
             /* get current x,y and angle values */
             Transform2D Trw = Transform3D(convert<double, 4, 4>(sensors.world)).projectTo2D();
             Transform2D Twr = Trw.i();
 
             Transform2D state = localisationOffset.localToWorld(Twr);
 
-            logFile << timestamp << "," << Trw.x() << "," << trw.y() << "," << trw.angle() << ","
+            logFile << timestamp.time_since_epoch().count() << "," << Trw.x() << "," << Trw.y() << "," << Trw.angle() << std::endl;/*","
                     << RightHipPitchPosition << "," << RightHipRollPosition << "," << RightHipYawPosition << ","
                     << LeftHipPitchPosition << "," << LeftHipRollPosition << "," << LeftHipYawPosition << ","
                     << RightKneePosition << "," << LeftKneePosition << ","
                     << RightAnklePitchPosition << "," << RightAnkleRollPosition << "," << RightAnkleYawPosition << ","
                     << LeftAnklePitchPosition << "," << LeftAnkleRollPosition << "," << LeftAnkleYawPosition
                     << std::endl;
+                    */
             });
 
 
