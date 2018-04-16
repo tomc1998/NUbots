@@ -79,3 +79,5 @@ tags
 /opencv-3.2.0/
 /protoc3/
 *.json
+
+module/vision/VisualSLAM/data/Vocabulary/ORBvoc\.txt\.tar\.gz
