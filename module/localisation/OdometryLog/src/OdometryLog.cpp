@@ -8,7 +8,7 @@
 #include "message/platform/darwin/DarwinSensors.h"
 
 #include "utility/math/matrix/Transform3D.h"
-#include "utility/nubugger/NUhelpers.h"
+#include "utility/nusight/NUhelpers.h"
 #include "utility/support/eigen_armadillo.h"
 #include "utility/support/yaml_armadillo.h"
 
@@ -24,7 +24,7 @@ namespace localisation {
     using utility::math::matrix::Transform3D;
     using message::platform::darwin::ButtonLeftDown;
     using message::behaviour::Nod;
-    using utility::nubugger::graph;
+    using utility::nusight::graph;
     using namespace std::chrono;
     OdometryLog::OdometryLog(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)),logFile(), logFilePath("odom_data.CSV") {
