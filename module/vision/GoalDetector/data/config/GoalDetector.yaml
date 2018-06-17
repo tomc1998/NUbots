@@ -26,5 +26,5 @@ debug_goal_throwouts: false
 debug_goal_ransac: false
 
 #SURF HORIZON
-upper_Poly_Coeff: [0.0007606173,-1.046934,599.8369]
-lower_Poly_Coeff: [0.0005354839,-0.6669854,500.4974]
+upper_Poly_Coeff: [0.000483559, -0.6189555, 450.942]
+lower_Poly_Coeff: [0.0003830439, -0.4902962, 460.7259]
