@@ -20,7 +20,9 @@ namespace vision {
         // find interest points
         void findLandmarks(std::unique_ptr<std::vector<Ipoint>>& landmarks_out,
                            std::unique_ptr<Eigen::VectorXf>& landmark_tf,
-                           std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc);
+                           std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
+                           std::vector<double> upperPolyCoeff,
+                           std::vector<double> lowerPolyCoeff);
 
         //! Loads vocab ready for use, returns the size of the vocab
         int loadVocab(std::string vocabFile);

@@ -10,14 +10,14 @@
 //! in image img.  Assumes source image to be a 32-bit floating point.  Returns IplImage in 32-bit float form.
 void Integral(std::unique_ptr<std::vector<float>>& data,
               std::shared_ptr<const message::vision::ClassifiedImage> frame_3,
-              int left_horizon,
-              int right_horizon);
+              std::vector<double> upperPolyCoeff,
+              std::vector<double> lowerPolyCoeff);
 
 // Convert horizon of image to single channel 32F
 void getGrayHorizon(std::unique_ptr<std::vector<float>>& result,
                     std::shared_ptr<const message::vision::ClassifiedImage> frame_4,
-                    int left_horizon,
-                    int right_horizon);
+                    std::vector<double> upperPolyCoeff,
+                    std::vector<double> lowerPolyCoeff);
 
 
 //! Computes the sum of pixels within the row specified by the left start

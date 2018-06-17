@@ -151,6 +151,9 @@ namespace vision {
                 DEBUG_GOAL_THROWOUTS = config["debug_goal_throwouts"].as<bool>();
                 DEBUG_GOAL_RANSAC    = config["debug_goal_ransac"].as<bool>();
 
+                UPPERPOLYCOEFF = config["upper_poly_coeff"].as<arma::vec>();
+                LOWERPOLYCOEFF = config["lower_poly_coeff"].as<arma::vec>();
+
                 goalMatcher.loadVocab(VocabFileName);
                 printf("\n\n\n");
                 // goalMatcher.loadMap(MapFileName);
@@ -785,7 +788,7 @@ namespace vision {
                     auto SURFtimer_s = std::chrono::system_clock::now();
                     SurfDetection surf_obj(rawImage);
                     surf_obj.loadVocab(VocabFileName);
-                    surf_obj.findLandmarks(landmarks, landmark_tf, landmark_pixLoc);
+                    surf_obj.findLandmarks(landmarks, landmark_tf, landmark_pixLoc, UPPERPOLYCOEFF, LOWERPOLYCOEFF);
                     auto SURFtimer_e = std::chrono::system_clock::now();
                     auto SURFtimer   = std::chrono::duration_cast<std::chrono::microseconds>(SURFtimer_e - SURFtimer_s);
                     SURFAverageTimer += (float) SURFtimer.count();

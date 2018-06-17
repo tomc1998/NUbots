@@ -41,34 +41,24 @@ namespace vision {
 
     void SurfDetection::findLandmarks(std::unique_ptr<std::vector<Ipoint>>& landmarks_out,
                                       std::unique_ptr<Eigen::VectorXf>& landmark_tf,
-                                      std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc) {
+                                      std::unique_ptr<std::vector<std::vector<float>>>& landmark_pixLoc,
+                                      std::vector<double> upperPolyCoeff,
+                                      std::vector<double> lowerPolyCoeff) {
 
         // Get horizon location
         uint w, h;
-        w                 = frame_p->dimensions[0];
-        h                 = frame_p->dimensions[1];
-        int left_horizon  = frame_p->horizon.distance;
-        int right_horizon = frame_p->horizon.distance;
+        w = frame_p->dimensions[0];
+        h = frame_p->dimensions[1];
 
-        // Check horizon is within frame
-        if (left_horizon >= 0 && left_horizon < h && right_horizon >= 0 && right_horizon < h) {
+        // Create integral-image representation of the image
 
-            // Create integral-image representation of the image
+        Integral(int_img, frame_p, upperPolyCoeff, lowerPolyCoeff);
 
-            Integral(int_img, frame_p, left_horizon, right_horizon);
+        // Create Fast Hessian Object
 
-            // For testing purposes...needs to be deleted
-            // for (int i = 0; i < IMAGE_WIDTH; ++i) {
-            //    printf("%0.1f ", int_img->at(i));
-            //}
-            // printf("\n");
-
-            // Create Fast Hessian Object
-
-            FastHessian fh(int_img, landmarks);
-            // Extract interest points and store in vector ipts
-            fh.getIpoints();
-        }
+        FastHessian fh(int_img, landmarks);
+        // Extract interest points and store in vector ipts
+        fh.getIpoints();
 
         int totaln = landmarks->size();
         printf("SURF landmarks found: %d\n", totaln);

@@ -24,3 +24,7 @@ angle_covariance: [0.001,0.01]
 
 debug_goal_throwouts: false
 debug_goal_ransac: false
+
+#SURF HORIZON
+upper_Poly_Coeff: [0.0007606173,-1.046934,599.8369]
+lower_Poly_Coeff: [0.0005354839,-0.6669854,500.4974]
