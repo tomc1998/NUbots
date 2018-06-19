@@ -1,0 +1,110 @@
+# Complete (two legs) walk cycle frequency in Hertz
+freq: 1.7
+
+# Global gain multiplying all time
+# dependant movement between 0 and 1.
+# Control walk enabled/disabled smoothing.
+# 0 is walk disabled.
+# 1 is walk fully enabled
+enabledGain: 1.0
+
+# Length of double support phase in phase time (between 0 and 1)
+# 0 is null double support and full single support
+# 1 is full double support and null single support
+supportPhaseRatio: 0.0
+
+# Lateral offset on default foot position in meters (foot lateral distance)
+# 0 is default
+# > 0 is both feet external offset
+footYOffset: 0.0
+
+# Forward length of each foot step in meters
+# >0 goes forward
+# <0 goes backward
+# (dynamic parameter)
+stepGain: 0.0
+
+# Vertical rise height of each foot in meters (positive)
+riseGain: 0.035
+
+# Angular yaw rotation of each foot for each step in radian.
+# 0 does not turn
+# >0 turns left
+# <0 turns right
+# (dynamic parameter)
+turnGain: 0.0
+
+# Lateral length of each foot step in meters.
+# >0 goes left
+# <0 goes right
+# (dynamic parameter)
+lateralGain: 0.0
+
+# Vertical foot offset from trunk in meters (positive)
+# 0 is in init position
+# > 0 set the robot lower to the ground
+trunkZOffset: 0.02
+
+# Lateral trunk oscillation amplitude in meters (positive)
+swingGain: 0.02
+
+# Lateral angular oscillation amplitude of swing trunkRoll in radian
+swingRollGain: 0.0
+
+# Phase shift of lateral trunk oscillation between 0 and 1
+swingPhase: 0.25
+
+# Foot X-Z spline velocities at ground take off and ground landing.
+# Step stands for X and rise stands for Z velocities.
+# Typical values ranges within 0 and 5.
+# >0 for DownVel is having the foot touching the ground with backward velocity.
+# >0 for UpVel is having the foot going back forward with non perpendicular tangent.
+stepUpVel: 4.0
+stepDownVel: 4.0
+riseUpVel: 4.0
+riseDownVel: 4.0
+
+# Time length in phase time where swing lateral oscillation remains on the same side between 0 and 0.5
+swingPause: 0.0
+
+# Swing lateral spline velocity (positive).
+# Control the "smoothness" of swing trajectory.
+# Typical values are between 0 and 5.
+swingVel: 4.0
+
+# Forward trunk-foot offset with respect to foot in meters
+# >0 moves the trunk forward
+# <0 moves the trunk backward
+trunkXOffset: 0.02
+
+# Lateral trunk-foot offset with respect to foot in meters
+# >0 moves the trunk on the left
+# <0 moves the trunk on the right
+trunkYOffset: 0.0
+
+# Trunk angular rotation around Y in radian
+# >0 bends the trunk forward
+# <0 bends the trunk backward
+trunkPitch: 0.15
+
+# Trunk angular rotation around X in radian
+# >0 bends the trunk on the right
+# <0 bends the trunk on the left
+trunkRoll: 0.0
+
+# Add extra offset on X, Y and Z direction on left and right feet in meters
+# (Can be used for example to implement dynamic kick)
+extraLeftX: 0.0
+extraLeftY: 0.0
+extraLeftZ: 0.0
+extraRightX: 0.0
+extraRightY: 0.0
+extraRightZ: 0.0
+
+# Add extra angular offset on Yaw, Pitch and Roll rotation of left and right foot in radians
+extraLeftYaw: 0.0
+extraLeftPitch: 0.0
+extraLeftRoll: 0.0
+extraRightYaw: 0.0
+extraRightPitch: 0.0
+extraRightRoll: 0.0
