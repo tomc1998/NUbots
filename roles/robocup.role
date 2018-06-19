@@ -45,7 +45,7 @@ NUCLEAR_ROLE(
 
     #Motion
     motion::ScriptEngine
-    motion::OldWalkEngine
+    motion::IKWalk
     motion::HeadController
 
     #Output
