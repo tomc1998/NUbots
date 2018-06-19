@@ -52,6 +52,17 @@ namespace math {
     }
 
     /**
+     * signum function.
+     * Returns either -1, or 1 based on the sign of the number.
+     * If -Wtype-limits is triggered, then need to specialise for unsigned types.
+     * http://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
+     */
+    template <typename T>
+    inline constexpr typename std::enable_if<std::is_arithmetic<T>::value, T>::type sign(T val) {
+        return (val >= T(0)) ? T(1) : T(0);
+    }
+
+    /**
      * @brief Round up to nearest multiple of a number
      * @details Return the integer that is the next closest multiple of the given value.
      * http://stackoverflow.com/a/3407254/4795763
