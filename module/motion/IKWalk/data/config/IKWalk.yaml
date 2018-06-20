@@ -1,5 +1,5 @@
 # Complete (two legs) walk cycle frequency in Hertz
-freq: 1.7
+freq: 0.5
 
 # Global gain multiplying all time
 # dependant movement between 0 and 1.
@@ -16,7 +16,7 @@ supportPhaseRatio: 0.0
 # Lateral offset on default foot position in meters (foot lateral distance)
 # 0 is default
 # > 0 is both feet external offset
-footYOffset: 0.0
+footYOffset: 0.05
 
 # Forward length of each foot step in meters
 # >0 goes forward
@@ -49,7 +49,7 @@ trunkZOffset: 0.02
 swingGain: 0.02
 
 # Lateral angular oscillation amplitude of swing trunkRoll in radian
-swingRollGain: 0.0
+swingRollGain: 0.1
 
 # Phase shift of lateral trunk oscillation between 0 and 1
 swingPhase: 0.25
@@ -75,7 +75,7 @@ swingVel: 4.0
 # Forward trunk-foot offset with respect to foot in meters
 # >0 moves the trunk forward
 # <0 moves the trunk backward
-trunkXOffset: 0.02
+trunkXOffset: 0.20
 
 # Lateral trunk-foot offset with respect to foot in meters
 # >0 moves the trunk on the left
@@ -108,3 +108,8 @@ extraLeftRoll: 0.0
 extraRightYaw: 0.0
 extraRightPitch: 0.0
 extraRightRoll: 0.0
+
+gains:
+  arms: 10
+  legs: 15
+
