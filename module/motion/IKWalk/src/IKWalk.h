@@ -3,6 +3,10 @@
 
 #include <nuclear>
 
+#include "HumanoidModel.h"
+
+#include "message/motion/KinematicsModel.h"
+
 #include "utility/input/ServoID.h"
 #include "utility/math/comparison.h"
 
@@ -21,18 +25,6 @@ namespace motion {
      * Walk parameters
      */
     struct IKWalkParameters {
-        /**
-         * Model leg typical length between
-         * each rotation axis
-         */
-        double distHipToKnee;
-        double distKneeToAnkle;
-        double distAnkleToGround;
-        /**
-         * Distance between the two feet in lateral
-         * axis while in zero position
-         */
-        double distFeetLateral;
         /**
          * Complete (two legs) walk cycle frequency
          * in Hertz
@@ -198,6 +190,8 @@ namespace motion {
         size_t subsumptionId;
 
         IKWalkParameters params;
+        message::motion::KinematicsModel kinematicsModel;
+        HumanoidModel model;
         static constexpr size_t UPDATE_FREQUENCY = 90;
         double phase;
         double dt;

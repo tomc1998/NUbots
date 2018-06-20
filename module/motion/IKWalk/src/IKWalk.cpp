@@ -2,20 +2,21 @@
 
 #include <fmt/format.h>
 
-#include "HumanoidModel.h"
-
 #include "extension/Configuration.h"
 #include "extension/Script.h"
 
 #include "message/behaviour/MotionCommand.h"
 #include "message/behaviour/ServoCommand.h"
-#include "message/motion/KinematicsModel.h"
 #include "message/motion/ServoTarget.h"
 #include "message/motion/WalkCommand.h"
 
 #include "utility/behaviour/Action.h"
 #include "utility/input/LimbID.h"
 #include "utility/math/geometry/CubicSpline.h"
+#include "utility/math/matrix/Rotation3D.h"
+#include "utility/math/matrix/Transform3D.h"
+#include "utility/motion/InverseKinematics.h"
+#include "utility/support/eigen_armadillo.h"
 #include "utility/support/yaml_expression.h"
 
 namespace module {
@@ -34,6 +35,8 @@ namespace motion {
 
     using utility::behaviour::ActionPriorites;
     using utility::behaviour::RegisterAction;
+    using utility::math::matrix::Rotation3D;
+    using utility::math::matrix::Transform3D;
     using ServoID = utility::input::ServoID;
     using LimbID  = utility::input::LimbID;
     using utility::support::Expression;
@@ -43,6 +46,7 @@ namespace motion {
         : Reactor(std::move(environment))
         , subsumptionId(size_t(this) * size_t(this) - size_t(this))
         , params()
+        , kinematicsModel()
         , phase(0.0)
         , dt(1.0 / UPDATE_FREQUENCY)
         , jointGains() {
@@ -51,113 +55,87 @@ namespace motion {
             // Complete (two legs) walk cycle frequency in Hertz
             params.freq = config["freq"].as<double>();
 
-            // Global gain multiplying all time
-            // dependant movement between 0 and 1.
-            // Control walk enabled/disabled smoothing.
-            // 0 is walk disabled.
-            // 1 is walk fully enabled
-            params.enabledGain = config["enabledGain"].as<double>();
-
             // Length of double support phase in phase time (between 0 and 1)
             // 0 is null double support and full single support
             // 1 is full double support and null single support
-            params.supportPhaseRatio = config["supportPhaseRatio"].as<double>();
+            params.supportPhaseRatio = config["supportPhaseRatio"].as<Expression>();
 
             // Lateral offset on default foot position in meters (foot lateral distance)
             // 0 is default
             // > 0 is both feet external offset
-            params.footYOffset = config["footYOffset"].as<double>();
-
-            // Forward length of each foot step in meters
-            // >0 goes forward
-            // <0 goes backward
-            // (dynamic parameter)
-            params.stepGain = config["stepGain"].as<double>();
+            params.footYOffset = config["footYOffset"].as<Expression>();
 
             // Vertical rise height of each foot in meters (positive)
-            params.riseGain = config["riseGain"].as<double>();
-
-            // Angular yaw rotation of each foot for each step in radian.
-            // 0 does not turn
-            // >0 turns left
-            // <0 turns right
-            // (dynamic parameter)
-            params.turnGain = config["turnGain"].as<double>();
-
-            // Lateral length of each foot step in meters.
-            // >0 goes left
-            // <0 goes right
-            // (dynamic parameter)
-            params.lateralGain = config["lateralGain"].as<double>();
+            params.riseGain = config["riseGain"].as<Expression>();
 
             // Vertical foot offset from trunk in meters (positive)
             // 0 is in init position
             // > 0 set the robot lower to the ground
-            params.trunkZOffset = config["trunkZOffset"].as<double>();
+            params.trunkZOffset = config["trunkZOffset"].as<Expression>();
 
             // Lateral trunk oscillation amplitude in meters (positive)
-            params.swingGain = config["swingGain"].as<double>();
+            params.swingGain = config["swingGain"].as<Expression>();
 
             // Lateral angular oscillation amplitude of swing trunkRoll in radian
-            params.swingRollGain = config["swingRollGain"].as<double>();
+            params.swingRollGain = config["swingRollGain"].as<Expression>();
 
             // Phase shift of lateral trunk oscillation between 0 and 1
-            params.swingPhase = config["swingPhase"].as<double>();
+            params.swingPhase = config["swingPhase"].as<Expression>();
 
             // Foot X-Z spline velocities at ground take off and ground landing.
             // Step stands for X and rise stands for Z velocities.
             // Typical values ranges within 0 and 5.
             // >0 for DownVel is having the foot touching the ground with backward velocity.
             // >0 for UpVel is having the foot going back forward with non perpendicular tangent.
-            params.stepUpVel   = config["stepUpVel"].as<double>();
-            params.stepDownVel = config["stepDownVel"].as<double>();
-            params.riseUpVel   = config["riseUpVel"].as<double>();
-            params.riseDownVel = config["riseDownVel"].as<double>();
+            params.stepUpVel   = config["stepUpVel"].as<Expression>();
+            params.stepDownVel = config["stepDownVel"].as<Expression>();
+            params.riseUpVel   = config["riseUpVel"].as<Expression>();
+            params.riseDownVel = config["riseDownVel"].as<Expression>();
 
             // Time length in phase time where swing lateral oscillation remains on the same side between 0 and 0.5
-            params.swingPause = config["swingPause"].as<double>();
+            params.swingPause = config["swingPause"].as<Expression>();
 
             // Swing lateral spline velocity (positive).
             // Control the "smoothness" of swing trajectory.
             // Typical values are between 0 and 5.
-            params.swingVel = config["swingVel"].as<double>();
+            params.swingVel = config["swingVel"].as<Expression>();
 
             // Forward trunk-foot offset with respect to foot in meters
             // >0 moves the trunk forward
             // <0 moves the trunk backward
-            params.trunkXOffset = config["trunkXOffset"].as<double>();
+            params.trunkXOffset = config["trunkXOffset"].as<Expression>();
 
             // Lateral trunk-foot offset with respect to foot in meters
             // >0 moves the trunk on the left
             // <0 moves the trunk on the right
-            params.trunkYOffset = config["trunkYOffset"].as<double>();
+            params.trunkYOffset = config["trunkYOffset"].as<Expression>();
 
             // Trunk angular rotation around Y in radian
             // >0 bends the trunk forward
             // <0 bends the trunk backward
-            params.trunkPitch = config["trunkPitch"].as<double>();
+            params.trunkPitch = config["trunkPitch"].as<Expression>();
 
             // Trunk angular rotation around X in radian
             // >0 bends the trunk on the right
             // <0 bends the trunk on the left
-            params.trunkRoll = config["trunkRoll"].as<double>();
+            params.trunkRoll = config["trunkRoll"].as<Expression>();
 
             // Add extra offset on X, Y and Z direction on left and right feet in meters
             // (Can be used for example to implement dynamic kick)
-            params.extraLeftX  = config["extraLeftX"].as<double>();
-            params.extraLeftY  = config["extraLeftY"].as<double>();
-            params.extraLeftZ  = config["extraLeftZ"].as<double>();
-            params.extraRightX = config["extraRightX"].as<double>();
-            params.extraRightY = config["extraRightY"].as<double>();
-            params.extraRightZ = config["extraRightZ"].as<double>();
+            params.extraLeftX  = config["extraLeftX"].as<Expression>();
+            params.extraLeftY  = config["extraLeftY"].as<Expression>();
+            params.extraLeftZ  = config["extraLeftZ"].as<Expression>();
+            params.extraRightX = config["extraRightX"].as<Expression>();
+            params.extraRightY = config["extraRightY"].as<Expression>();
+            params.extraRightZ = config["extraRightZ"].as<Expression>();
 
             // Add extra angular offset on Yaw, Pitch and Roll rotation of left and right foot in radians
-            params.extraLeftYaw    = config["extraLeftYaw"].as<double>();
-            params.extraLeftPitch  = config["extraLeftPitch"].as<double>();
-            params.extraLeftRoll   = config["extraLeftRoll"].as<double>();
-            params.extraRightYaw   = config["extraRightYaw"].as<double>();
-            params.extraRightPitch = config["extraRightPitch"].as<double>();
-            params.extraRightRoll  = config["extraRightRoll"].as<double>();
+            params.extraLeftYaw    = config["extraLeftYaw"].as<Expression>();
+            params.extraLeftPitch  = config["extraLeftPitch"].as<Expression>();
+            params.extraLeftRoll   = config["extraLeftRoll"].as<Expression>();
+            params.extraRightYaw   = config["extraRightYaw"].as<Expression>();
+            params.extraRightPitch = config["extraRightPitch"].as<Expression>();
+            params.extraRightRoll  = config["extraRightRoll"].as<Expression>();
 
             // Stop the walk
             params.enabledGain = 0.0;
@@ -201,14 +179,14 @@ namespace motion {
                            }}));
 
 
-        on<Startup, Trigger<KinematicsModel>>().then([this](const KinematicsModel& model) {
-            // Model leg typical length between each rotation axis
-            params.distHipToKnee     = model.leg.UPPER_LEG_LENGTH;
-            params.distKneeToAnkle   = model.leg.LOWER_LEG_LENGTH;
-            params.distAnkleToGround = model.leg.FOOT_HEIGHT;
+        on<Startup, Trigger<KinematicsModel>>().then([this](const KinematicsModel& kinematics) {
+            kinematicsModel = kinematics;
 
-            // Distance between the two feet in lateral axis while in zero position
-            params.distFeetLateral = 2.0 * model.leg.HIP_OFFSET_Y;
+            // Init Humanoid Model
+            model = HumanoidModel(kinematicsModel.leg.UPPER_LEG_LENGTH,
+                                  kinematicsModel.leg.LOWER_LEG_LENGTH,
+                                  kinematicsModel.leg.FOOT_HEIGHT,
+                                  2.0 * kinematicsModel.leg.HIP_OFFSET_Y);
         });
 
         /**
@@ -218,16 +196,11 @@ namespace motion {
          * If inverse kinematics fail an error is thrown
          */
         updateHandle = on<Every<UPDATE_FREQUENCY, Per<std::chrono::seconds>>, Single, Priority::HIGH>().then([this]() {
-            // Init Humanoid Model
-            HumanoidModel model(
-                params.distHipToKnee, params.distKneeToAnkle, params.distAnkleToGround, params.distFeetLateral);
-
             // Compute phase for left and right leg
             double phaseLeft  = boundPhase(phase);
             double phaseRight = boundPhase(phase + 0.5);
 
-            // Compute the length of a step
-            //(from ground touch to take off) in phase time
+            // Compute the length of a step (from ground touch to take off) in phase time
             double stepLength = 0.5 * params.supportPhaseRatio + 0.5;
 
             // Build X foot step spline
@@ -244,11 +217,9 @@ namespace motion {
             stepSpline.addPoint(1.0, 0.5, -params.stepDownVel);
 
             // Build Y trunk swing spline.
-            // The trunk lateral oscillation goes from right to left,
-            // wait a bit (swingPause) on left side then goes to the
-            // right and pause as well.
-            // Trajectory "smoothness" can be tunned with
-            // swingVel updating splines tangents.
+            // The trunk lateral oscillation goes from right to left, wait a bit (swingPause) on left side
+            // then goes to the right and pause as well.
+            // Trajectory "smoothness" can be tuned with swingVel updating splines tangents.
             utility::math::geometry::CubicSpline swingSpline;
             swingSpline.addPoint(0.0, -1.0);
             swingSpline.addPoint(params.swingPause * 0.5, -1.0);
@@ -262,10 +233,8 @@ namespace motion {
             swingSpline.addPoint(1.0, -1.0, 0.0);
 
             // Build Z foot rise spline.
-            // The foot stays on the ground during backward step and then
-            // moves up and down.
-            // Custom velocities (tangents) can be tunned to achieve
-            // specific trajectory at foot take off and landing.
+            // The foot stays on the ground during backward step and then moves up and down.
+            // Custom velocities (tangents) can be tuned to achieve specific trajectory at foot take off and landing.
             utility::math::geometry::CubicSpline riseSpline;
             riseSpline.addPoint(0.0, 0.0);
             riseSpline.addPoint(stepLength, 0.0);
@@ -274,9 +243,8 @@ namespace motion {
             riseSpline.addPoint(1.0, 0.0, -params.riseDownVel);
 
             // Build Yaw foot turn spline.
-            // This is the same as stepSpline but movement occurs
-            // only during single support phase as robot degrees of freedom
-            // could not achieve rotation during double support phase.
+            // This is the same as stepSpline but movement occurs only during single support phase as robot
+            // degrees of freedom could not achieve rotation during double support phase.
             utility::math::geometry::CubicSpline turnSpline;
             turnSpline.addPoint(0.0, 0.0);
             turnSpline.addPoint(stepLength - 0.5, 0.0);
@@ -372,10 +340,10 @@ namespace motion {
             posLeft(1) -= params.trunkYOffset;
             posRight(1) -= params.trunkYOffset;
 
-            // In case of trunk Roll rotation, an height (Z)
+            // In case of trunk Roll rotation, a height (Z)
             // positive offset have to be applied on external foot to
             // set both feet on same level
-            double deltaLen = model.feetDistance() * tan(rollVal);
+            double deltaLen = kinematicsModel.leg.HIP_OFFSET_Y * std::tan(rollVal);
             if (rollVal > 0.0) {
                 posRight(2) += deltaLen;
             }
@@ -390,10 +358,10 @@ namespace motion {
             // Pitch and Roll rotation. It is better for tuning if
             // trunk pitch or roll rotation do not apply offset on
             // trunk position.
-            posLeft(0) += model.legsLength() * std::tan(params.trunkPitch);
-            posRight(0) += model.legsLength() * std::tan(params.trunkPitch);
-            posLeft(1) -= model.legsLength() * std::tan(rollVal);
-            posRight(1) -= model.legsLength() * std::tan(rollVal);
+            posLeft.x() += model.legsLength() * std::tan(params.trunkPitch);
+            posRight.x() += model.legsLength() * std::tan(params.trunkPitch);
+            posLeft.y() -= model.legsLength() * std::tan(rollVal);
+            posRight.y() -= model.legsLength() * std::tan(rollVal);
 
             // Run inverse invert kinematics on both legs
             // using Pitch-Roll-Yaw convention
@@ -402,11 +370,10 @@ namespace motion {
             bool successRight = model.legIK(posRight, angleRight, module::motion::EulerPitchRollYaw, false, outputs);
 
             // Check inverse kinematics success
-            if (successLeft || successRight) {
+            if (successLeft && successRight) {
                 // Increment given phase
                 // Cycling between 0 and 1
                 phase = boundPhase(phase + dt * params.freq);
-
 
                 // Emit servo waypoints
                 NUClear::clock::time_point time =
@@ -489,6 +456,7 @@ namespace motion {
             }
             else {
                 log<NUClear::FATAL>("Invalid walk parameters. Servo waypoints are not finite.");
+                log<NUClear::FATAL>(fmt::format("failure: {}, {}.", successLeft, successRight));
                 log<NUClear::FATAL>(fmt::format("hip_yaw: {}, {}\n", outputs.left_hip_yaw, outputs.right_hip_yaw));
                 log<NUClear::FATAL>(fmt::format("hip_roll: {}, {}\n", outputs.left_hip_roll, outputs.right_hip_roll));
                 log<NUClear::FATAL>(
@@ -507,7 +475,6 @@ namespace motion {
 
         on<Trigger<MotionCommand>>().then([this](const MotionCommand& motionCommand) {
             if (motionCommand.type == MotionCommand::Type::Value::DirectCommand) {
-                log("Received direct motion command");
                 updateHandle.enable();
                 if ((motionCommand.walkCommand.x() == 0) && (motionCommand.walkCommand.y() == 0)
                     && (motionCommand.walkCommand.z() == 0)) {
@@ -527,7 +494,6 @@ namespace motion {
             }
 
             else if (motionCommand.type == MotionCommand::Type::Value::StandStill) {
-                log("Received still motion command");
                 // Note that in practice params.stepGain = 0.0 does not make the robot walk on place.
                 // Some offset step trim have to be tuned to really find the robot "neutral".
 

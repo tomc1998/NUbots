@@ -2,6 +2,9 @@
 #define MODULE_MOTION_HUMANOIDMODEL_H
 
 #include <Eigen/Dense>
+#include <iostream>
+
+#include "utility/math/comparison.h"
 
 namespace module {
 namespace motion {
@@ -96,17 +99,19 @@ namespace motion {
 
         bool compute(Eigen::Vector3d C, Frame3D orientation, Position& result) {
             if (utility::math::almost_equal(L.x(), 0.0, EPSILON) || utility::math::almost_equal(L.y(), 0.0, EPSILON)) {
+                std::cout << __FILE__ << ":" << __LINE__ << std::endl;
                 return false;
             }
 
-            /* step 1 : calcul de B */
+            /* step 1 : B calculation */
             Eigen::Vector3d B = C + L.z() * orientation[2];
             double B_len      = B.norm();
             if (B.z() >= 0 || utility::math::almost_equal(B_len, 0.0, EPSILON)) {
+                std::cout << __FILE__ << ":" << __LINE__ << std::endl;
                 return false;
             }
 
-            /* step 2 : calcul de phi */
+            /* step 2 : phi calculation */
             Eigen::Vector3d phi;
             if (!utility::math::almost_equal(orientation[0].z(), 0.0, EPSILON)) {
                 double a_pp = 1.0;
@@ -120,61 +125,66 @@ namespace motion {
                 phi.normalize();
             }
 
-            /* phi est orienté vers l'avant ou sur la gauche */
+            /* phi is oriented to the front or to the left */
             if (!(phi.x() > 0 || (utility::math::almost_equal(phi.x(), 0.0, EPSILON) && phi.y() >= 0))) {
                 phi = -1.0 * phi;
             }
 
-            /* step 3 : calcul de \theta_0 */
+            /* step 3 : hip_yaw calculation */
             result.theta[0] = std::atan2(phi[1], phi[0]);
 
-            /* step 4 : calcul de G */
+            /* step 4 : G calculation */
             Eigen::Vector3d G = B.dot(phi) * phi;
 
-            /* step 5 : calcul de \theta_1 */
+            /* step 5 : hip_roll calculation */
             Eigen::Vector3d zeta = -1.0 * phi.cross(Eigen::Vector3d::UnitZ());
             result.theta[1]      = std::atan2((B - G).dot(zeta), -B.z());
 
-            /* step 6 : calcul de \theta_3 */
+            /* step 6 : knee calculation */
             double q = (L.x() * L.x() + L.y() * L.y() - B_len * B_len) / (2.0 * L.x() * L.y());
             if (q < (-1.0 - EPSILON) || q > (1.0 + EPSILON)) {
+                std::cout << __FILE__ << ":" << __LINE__ << std::endl;
+                std::cout << "L = [" << L.transpose() << "], B = [" << B.transpose() << "], B_len = " << B_len
+                          << ", q = " << q << std::endl;
+                std::cout << M_PI - std::acos(utility::math::clamp(-1.0, q, 1.0)) << std::endl;
                 return false;
             }
-            utility::math::clamp(-1.0, q, 1.0);
+            q               = utility::math::clamp(-1.0, q, 1.0);
             result.theta[3] = M_PI - std::acos(q);
 
-            /* step 7 : calcul de \omega */
+            /* step 7 : \omega calculation */
             Eigen::Vector3d omega(-std::sin(result.theta[0]) * std::sin(result.theta[1]),
                                   std::cos(result.theta[0]) * std::sin(result.theta[1]),
                                   -std::cos(result.theta[1]));
 
-            /* step 8 : calcul de alpha */
-            q = B.dot(omega) / B_len;
-            utility::math::clamp(-1.0, q, 1.0); /* on a toujours |q| <= 1 */
+            /* step 8 : alpha calculation */
+            q            = B.dot(omega) / B_len;
+            q            = utility::math::clamp(-1.0, q, 1.0); /* we always have |q| <= 1 */
             double alpha = utility::math::sign(B.cross(omega).dot(zeta)) * std::acos(q);
 
-            /* step 9 : calcul de l'angle (A \Omega B) */
+            /* step 9 : angle calculation (A \omega B) */
             q = (L.x() * L.x() + B_len * B_len - L.y() * L.y()) / (2.0 * L.x() * B_len);
             if (q < (-1.0 - EPSILON) || q > (1.0 + EPSILON)) {
+                std::cout << __FILE__ << ":" << __LINE__ << std::endl;
                 return false;
             }
-            utility::math::clamp(-1.0, q, 1.0);
+            q                = utility::math::clamp(-1.0, q, 1.0);
             double A_omega_B = std::acos(q);
 
-            /* step 10 : calcul de theta_2 */
+            /* step 10 : hip_pitch calculation */
             result.theta[2] = alpha + A_omega_B;
 
-            /* step 11 : calcul de theta_4 */
-            q = phi.dot(orientation[0]);
-            utility::math::clamp(-1.0, q, 1.0);
+            /* step 11 : ankle_pitch calculation */
+            q               = phi.dot(orientation[0]);
+            q               = utility::math::clamp(-1.0, q, 1.0);
             double beta     = -utility::math::sign(phi.cross(orientation[0]).dot(zeta)) * std::acos(q);
             result.theta[4] = beta + result.theta[3] - result.theta[2];
 
-            /* step 12 : calcul de theta_5 */
+            /* step 12 : ankle_roll calculation */
             Eigen::Vector3d tau = phi.cross(omega);
             q                   = tau.dot(orientation[1]);
-            utility::math::clamp(-1.0, q, 1.0);
-            result.theta[5] = utility::math::sign(tau.cross(orientation[1]).dot(orientation[0])) * std::acos(q);
+            q                   = utility::math::clamp(-1.0, q, 1.0);
+            result.theta[5]     = utility::math::sign(tau.cross(orientation[1]).dot(orientation[0])) * std::acos(q);
 
             return true;
         }
@@ -185,6 +195,7 @@ namespace motion {
      */
     class HumanoidModel {
     public:
+        HumanoidModel() : legHipToKnee(0.0), legKneeToAnkle(0.0), legAnkleToGround(0.0), legLateral(0.0) {}
         /**
          * Initialize the model with given
          * typical leg length
@@ -213,12 +224,10 @@ namespace motion {
             // LegIK initialization
             IK ik(legHipToKnee, legKneeToAnkle, legAnkleToGround);
 
-            // Convert foot position from given
-            // target to LegIK base
+            // Convert foot position from given target to LegIK base
             Eigen::Vector3d legIKTarget = buildTargetPos(footPos);
 
-            // Convert orientation from given frame
-            // to LegIK base
+            // Convert orientation from given frame to LegIK base
             Frame3D legIKMatrix = buildTargetOrientation(angles, eulerType);
 
             // Run inverse kinematics

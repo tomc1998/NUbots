@@ -12,20 +12,18 @@ namespace math {
         /**
          * CubicSpline
          *
-         * Implementation of 3rd order
-         * polynomial splines
+         * Implementation of 3rd order polynomial splines
          */
         class CubicSpline : public Spline {
         public:
             /**
-             * Add a new point with its time, position value,
-             * and velocity
+             * Add a new point with its time, position value, and velocity
              */
             void addPoint(double time, double position, double velocity = 0.0);
 
         private:
             /**
-             * Simple point struture
+             * Simple point structure
              */
             struct Point {
                 double time;
@@ -39,8 +37,7 @@ namespace math {
             std::vector<Point> points;
 
             /**
-             * Fit a polynom between 0 and t with given
-             * pos, vel and acc initial and final conditions
+             * Fit a polynomial between 0 and t with given pos, vel and acc initial and final conditions
              */
             Polynomial polyFit(double t, double pos1, double vel1, double pos2, double vel2) const;
 

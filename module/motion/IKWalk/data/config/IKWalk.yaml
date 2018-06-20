@@ -1,13 +1,6 @@
 # Complete (two legs) walk cycle frequency in Hertz
 freq: 0.5
 
-# Global gain multiplying all time
-# dependant movement between 0 and 1.
-# Control walk enabled/disabled smoothing.
-# 0 is walk disabled.
-# 1 is walk fully enabled
-enabledGain: 1.0
-
 # Length of double support phase in phase time (between 0 and 1)
 # 0 is null double support and full single support
 # 1 is full double support and null single support
@@ -18,27 +11,8 @@ supportPhaseRatio: 0.0
 # > 0 is both feet external offset
 footYOffset: 0.05
 
-# Forward length of each foot step in meters
-# >0 goes forward
-# <0 goes backward
-# (dynamic parameter)
-stepGain: 0.0
-
 # Vertical rise height of each foot in meters (positive)
 riseGain: 0.035
-
-# Angular yaw rotation of each foot for each step in radian.
-# 0 does not turn
-# >0 turns left
-# <0 turns right
-# (dynamic parameter)
-turnGain: 0.0
-
-# Lateral length of each foot step in meters.
-# >0 goes left
-# <0 goes right
-# (dynamic parameter)
-lateralGain: 0.0
 
 # Vertical foot offset from trunk in meters (positive)
 # 0 is in init position
