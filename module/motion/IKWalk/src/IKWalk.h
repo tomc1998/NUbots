@@ -9,6 +9,7 @@
 
 #include "utility/input/ServoID.h"
 #include "utility/math/comparison.h"
+#include "utility/math/matrix/Transform3D.h"
 
 /**
  * IKWalk
@@ -187,14 +188,16 @@ namespace motion {
 
     class IKWalk : public NUClear::Reactor {
     private:
+        static constexpr size_t UPDATE_FREQUENCY = 90;
         size_t subsumptionId;
 
         IKWalkParameters params;
         message::motion::KinematicsModel kinematicsModel;
         HumanoidModel model;
-        static constexpr size_t UPDATE_FREQUENCY = 90;
         double phase;
         double dt;
+
+        utility::math::matrix::Transform3D left_IK0, right_IK0;
 
         // Reaction handle for the main update loop, disabling when not moving will save unnecessary CPU
         ReactionHandle updateHandle;

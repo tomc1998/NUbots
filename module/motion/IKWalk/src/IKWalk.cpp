@@ -7,6 +7,7 @@
 
 #include "message/behaviour/MotionCommand.h"
 #include "message/behaviour/ServoCommand.h"
+#include "message/input/Sensors.h"
 #include "message/motion/ServoTarget.h"
 #include "message/motion/WalkCommand.h"
 
@@ -14,7 +15,7 @@
 #include "utility/input/LimbID.h"
 #include "utility/math/geometry/CubicSpline.h"
 #include "utility/math/matrix/Rotation3D.h"
-#include "utility/math/matrix/Transform3D.h"
+#include "utility/motion/ForwardKinematics.h"
 #include "utility/motion/InverseKinematics.h"
 #include "utility/support/eigen_armadillo.h"
 #include "utility/support/yaml_expression.h"
@@ -49,6 +50,8 @@ namespace motion {
         , kinematicsModel()
         , phase(0.0)
         , dt(1.0 / UPDATE_FREQUENCY)
+        , left_IK0()
+        , right_IK0()
         , jointGains() {
 
         on<Configuration>("IKWalk.yaml").then([this](const Configuration& config) {
@@ -182,11 +185,31 @@ namespace motion {
         on<Startup, Trigger<KinematicsModel>>().then([this](const KinematicsModel& kinematics) {
             kinematicsModel = kinematics;
 
+            // Figure out our kinematics for when all leg servos positions are zero
+            message::input::Sensors sensors;
+            for (size_t servo = 0; servo < ServoID::NUMBER_OF_SERVOS; servo++) {
+                sensors.servo.emplace_back(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+            }
+
+            left_IK0 = utility::motion::kinematics::calculateLegJointPosition(
+                kinematicsModel,
+                sensors,
+                ServoID::L_ANKLE_ROLL,
+                message::motion::BodySide::LEFT)[ServoID::L_ANKLE_ROLL];
+            right_IK0 = utility::motion::kinematics::calculateLegJointPosition(
+                kinematicsModel,
+                sensors,
+                ServoID::R_ANKLE_ROLL,
+                message::motion::BodySide::RIGHT)[ServoID::R_ANKLE_ROLL];
+
+            log(left_IK0);
+            log(right_IK0);
+
             // Init Humanoid Model
-            model = HumanoidModel(kinematicsModel.leg.UPPER_LEG_LENGTH,
-                                  kinematicsModel.leg.LOWER_LEG_LENGTH,
-                                  kinematicsModel.leg.FOOT_HEIGHT,
-                                  2.0 * kinematicsModel.leg.HIP_OFFSET_Y);
+            // model = HumanoidModel(kinematicsModel.leg.UPPER_LEG_LENGTH,
+            //                       kinematicsModel.leg.LOWER_LEG_LENGTH,
+            //                       kinematicsModel.leg.FOOT_HEIGHT,
+            //                       2.0 * kinematicsModel.leg.HIP_OFFSET_Y);
         });
 
         /**
@@ -354,23 +377,45 @@ namespace motion {
             // TODO In case of oscillating trunkRoll or swingRoll enabled XXX
             // TODO feet get an unwanted lateral oscillation XXX
 
+            double legsLength = kinematicsModel.leg.UPPER_LEG_LENGTH + kinematicsModel.leg.LOWER_LEG_LENGTH
+                                + kinematicsModel.leg.FOOT_HEIGHT;
             // Trunk X and Y offset is applied to compensate
             // Pitch and Roll rotation. It is better for tuning if
             // trunk pitch or roll rotation do not apply offset on
             // trunk position.
-            posLeft.x() += model.legsLength() * std::tan(params.trunkPitch);
-            posRight.x() += model.legsLength() * std::tan(params.trunkPitch);
-            posLeft.y() -= model.legsLength() * std::tan(rollVal);
-            posRight.y() -= model.legsLength() * std::tan(rollVal);
+            posLeft.x() += legsLength * std::tan(params.trunkPitch) - kinematicsModel.leg.TOE_LENGTH;
+            posRight.x() += legsLength * std::tan(params.trunkPitch) - kinematicsModel.leg.TOE_LENGTH;
+            posLeft.y() -= legsLength * std::tan(rollVal);
+            posRight.y() -= legsLength * std::tan(rollVal);
+            posLeft.z() -= legsLength;
+            posRight.z() -= legsLength;
 
-            // Run inverse invert kinematics on both legs
-            // using Pitch-Roll-Yaw convention
-            IKWalkOutputs outputs;
-            bool successLeft  = model.legIK(posLeft, angleLeft, module::motion::EulerPitchRollYaw, true, outputs);
-            bool successRight = model.legIK(posRight, angleRight, module::motion::EulerPitchRollYaw, false, outputs);
+            posLeft  = convert<double, 3>(left_IK0 * convert<double, 3>(posLeft));
+            posRight = convert<double, 3>(right_IK0 * convert<double, 3>(posRight));
 
-            // Check inverse kinematics success
-            if (successLeft && successRight) {
+            Eigen::AngleAxisd yaw(angleLeft.z(), Eigen::Vector3d::UnitZ());
+            Eigen::AngleAxisd pitch(angleLeft.x(), Eigen::Vector3d::UnitY());
+            Eigen::AngleAxisd roll(angleLeft.y(), Eigen::Vector3d::UnitX());
+
+            Transform3D left(Rotation3D(convert<double, 3, 3>((yaw * roll * pitch).matrix())),
+                             convert<double, 3>(posLeft));
+            bool leftValid = utility::motion::kinematics::legPoseValid(kinematicsModel, left, LimbID::LEFT_LEG);
+
+            yaw   = Eigen::AngleAxisd(angleRight.z(), Eigen::Vector3d::UnitZ());
+            pitch = Eigen::AngleAxisd(angleRight.x(), Eigen::Vector3d::UnitY());
+            roll  = Eigen::AngleAxisd(angleRight.y(), Eigen::Vector3d::UnitX());
+            Transform3D right(Rotation3D(convert<double, 3, 3>((yaw * roll * pitch).matrix())),
+                              convert<double, 3>(posRight));
+            bool rightValid = utility::motion::kinematics::legPoseValid(kinematicsModel, right, LimbID::RIGHT_LEG);
+
+            log(left);
+            log(right);
+            log(angleLeft);
+            log(angleRight);
+            log(posLeft);
+            log(posRight);
+
+            if (leftValid && rightValid) {
                 // Increment given phase
                 // Cycling between 0 and 1
                 phase = boundPhase(phase + dt * params.freq);
@@ -379,98 +424,138 @@ namespace motion {
                 NUClear::clock::time_point time =
                     NUClear::clock::now() + std::chrono::nanoseconds(std::nano::den / UPDATE_FREQUENCY);
 
+                auto joints = utility::motion::kinematics::calculateLegJoints(kinematicsModel, left, right);
+
                 std::unique_ptr<std::vector<ServoCommand>> waypoints = std::make_unique<std::vector<ServoCommand>>();
                 waypoints->reserve(12);
 
-                // TODO: support separate gains for each leg
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::L_HIP_YAW,
-                                      float(outputs.left_hip_yaw),
-                                      jointGains[ServoID::L_HIP_YAW],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::R_HIP_YAW,
-                                      float(outputs.right_hip_yaw),
-                                      jointGains[ServoID::R_HIP_YAW],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::L_HIP_ROLL,
-                                      float(outputs.left_hip_roll),
-                                      jointGains[ServoID::L_HIP_ROLL],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::R_HIP_ROLL,
-                                      float(outputs.right_hip_roll),
-                                      jointGains[ServoID::R_HIP_ROLL],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::L_HIP_PITCH,
-                                      float(outputs.left_hip_pitch),
-                                      jointGains[ServoID::L_HIP_PITCH],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::R_HIP_PITCH,
-                                      float(outputs.right_hip_pitch),
-                                      jointGains[ServoID::R_HIP_PITCH],
-                                      100});
-                waypoints->push_back(
-                    {subsumptionId, time, ServoID::L_KNEE, float(outputs.left_knee), jointGains[ServoID::L_KNEE], 100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::R_KNEE,
-                                      float(outputs.right_knee),
-                                      jointGains[ServoID::R_KNEE],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::L_ANKLE_PITCH,
-                                      float(outputs.left_ankle_pitch),
-                                      jointGains[ServoID::L_ANKLE_PITCH],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::R_ANKLE_PITCH,
-                                      float(outputs.right_ankle_pitch),
-                                      jointGains[ServoID::R_ANKLE_PITCH],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::L_ANKLE_ROLL,
-                                      float(outputs.left_ankle_roll),
-                                      jointGains[ServoID::L_ANKLE_ROLL],
-                                      100});
-                waypoints->push_back({subsumptionId,
-                                      time,
-                                      ServoID::R_ANKLE_ROLL,
-                                      float(outputs.right_ankle_roll),
-                                      jointGains[ServoID::R_ANKLE_ROLL],
-                                      100});
-
+                for (const auto& joint : joints) {
+                    // TODO: support separate gains for each leg
+                    waypoints->push_back(
+                        {subsumptionId, time, joint.first, float(joint.second), jointGains[joint.first], 100});
+                }
                 emit(std::move(waypoints));
             }
+
+            else if (!leftValid) {
+                log<NUClear::FATAL>("Invalid walk parameters. Left leg pose is not valid.");
+                log<NUClear::FATAL>(left);
+            }
+
             else {
-                log<NUClear::FATAL>("Invalid walk parameters. Servo waypoints are not finite.");
-                log<NUClear::FATAL>(fmt::format("failure: {}, {}.", successLeft, successRight));
-                log<NUClear::FATAL>(fmt::format("hip_yaw: {}, {}\n", outputs.left_hip_yaw, outputs.right_hip_yaw));
-                log<NUClear::FATAL>(fmt::format("hip_roll: {}, {}\n", outputs.left_hip_roll, outputs.right_hip_roll));
-                log<NUClear::FATAL>(
-                    fmt::format("hip_pitch: {}, {}\n", outputs.left_hip_pitch, outputs.right_hip_pitch));
-                log<NUClear::FATAL>(fmt::format("knee: {}, {}\n", outputs.left_knee, outputs.right_knee));
-                log<NUClear::FATAL>(
-                    fmt::format("ankle_pitch: {}, {}\n", outputs.left_ankle_pitch, outputs.right_ankle_pitch));
-                log<NUClear::FATAL>(
-                    fmt::format("ankle_roll: {}, {}\n", outputs.left_ankle_roll, outputs.right_ankle_roll));
+                log<NUClear::FATAL>("Invalid walk parameters. Right leg pose is not valid.");
+                log<NUClear::FATAL>(right);
             }
 
             if (params.enabledGain == 0.0) {
                 updateHandle.disable();
             }
+
+            // Run inverse invert kinematics on both legs
+            // using Pitch-Roll-Yaw convention
+            // IKWalkOutputs outputs;
+            // bool successLeft  = model.legIK(posLeft, angleLeft, module::motion::EulerPitchRollYaw, true, outputs);
+            // bool successRight = model.legIK(posRight, angleRight, module::motion::EulerPitchRollYaw, false, outputs);
+
+            // // Check inverse kinematics success
+            // if (successLeft && successRight) {
+            //     // Increment given phase
+            //     // Cycling between 0 and 1
+            //     phase = boundPhase(phase + dt * params.freq);
+
+            //     // Emit servo waypoints
+            //     NUClear::clock::time_point time =
+            //         NUClear::clock::now() + std::chrono::nanoseconds(std::nano::den / UPDATE_FREQUENCY);
+
+            //     std::unique_ptr<std::vector<ServoCommand>> waypoints = std::make_unique<std::vector<ServoCommand>>();
+            //     waypoints->reserve(12);
+
+            //     // TODO: support separate gains for each leg
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::L_HIP_YAW,
+            //                           float(outputs.left_hip_yaw),
+            //                           jointGains[ServoID::L_HIP_YAW],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::R_HIP_YAW,
+            //                           float(outputs.right_hip_yaw),
+            //                           jointGains[ServoID::R_HIP_YAW],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::L_HIP_ROLL,
+            //                           float(outputs.left_hip_roll),
+            //                           jointGains[ServoID::L_HIP_ROLL],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::R_HIP_ROLL,
+            //                           float(outputs.right_hip_roll),
+            //                           jointGains[ServoID::R_HIP_ROLL],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::L_HIP_PITCH,
+            //                           float(outputs.left_hip_pitch),
+            //                           jointGains[ServoID::L_HIP_PITCH],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::R_HIP_PITCH,
+            //                           float(outputs.right_hip_pitch),
+            //                           jointGains[ServoID::R_HIP_PITCH],
+            //                           100});
+            //     waypoints->push_back(
+            //         {subsumptionId, time, ServoID::L_KNEE, float(outputs.left_knee), jointGains[ServoID::L_KNEE],
+            //         100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::R_KNEE,
+            //                           float(outputs.right_knee),
+            //                           jointGains[ServoID::R_KNEE],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::L_ANKLE_PITCH,
+            //                           float(outputs.left_ankle_pitch),
+            //                           jointGains[ServoID::L_ANKLE_PITCH],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::R_ANKLE_PITCH,
+            //                           float(outputs.right_ankle_pitch),
+            //                           jointGains[ServoID::R_ANKLE_PITCH],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::L_ANKLE_ROLL,
+            //                           float(outputs.left_ankle_roll),
+            //                           jointGains[ServoID::L_ANKLE_ROLL],
+            //                           100});
+            //     waypoints->push_back({subsumptionId,
+            //                           time,
+            //                           ServoID::R_ANKLE_ROLL,
+            //                           float(outputs.right_ankle_roll),
+            //                           jointGains[ServoID::R_ANKLE_ROLL],
+            //                           100});
+
+            //     emit(std::move(waypoints));
+            // }
+            // else {
+            //     log<NUClear::FATAL>("Invalid walk parameters. Servo waypoints are not finite.");
+            //     log<NUClear::FATAL>(fmt::format("failure: {}, {}.", successLeft, successRight));
+            //     log<NUClear::FATAL>(fmt::format("hip_yaw: {}, {}\n", outputs.left_hip_yaw, outputs.right_hip_yaw));
+            //     log<NUClear::FATAL>(fmt::format("hip_roll: {}, {}\n", outputs.left_hip_roll,
+            //     outputs.right_hip_roll)); log<NUClear::FATAL>(
+            //         fmt::format("hip_pitch: {}, {}\n", outputs.left_hip_pitch, outputs.right_hip_pitch));
+            //     log<NUClear::FATAL>(fmt::format("knee: {}, {}\n", outputs.left_knee, outputs.right_knee));
+            //     log<NUClear::FATAL>(
+            //         fmt::format("ankle_pitch: {}, {}\n", outputs.left_ankle_pitch, outputs.right_ankle_pitch));
+            //     log<NUClear::FATAL>(
+            //         fmt::format("ankle_roll: {}, {}\n", outputs.left_ankle_roll, outputs.right_ankle_roll));
+            // }
         });
 
         on<Trigger<MotionCommand>>().then([this](const MotionCommand& motionCommand) {
