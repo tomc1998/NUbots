@@ -44,7 +44,6 @@ namespace motion {
         using ServoID = utility::input::ServoID;
         using message::input::Sensors;
         using message::motion::KinematicsModel;
-        using BodySide = message::motion::BodySide::Value;
 
 
         inline std::map<ServoID, utility::math::matrix::Transform3D> calculateHeadJointPosition(
@@ -107,18 +106,15 @@ namespace motion {
 
             The basis 'faces' down its x axis.
         */
-        inline std::map<ServoID, utility::math::matrix::Transform3D> calculateLegJointPosition(
-            const KinematicsModel& model,
-            const Sensors& sensors,
-            ServoID servoID,
-            BodySide isLeft) {
+        inline std::map<ServoID, utility::math::matrix::Transform3D>
+        calculateLegJointPosition(const KinematicsModel& model, const Sensors& sensors, ServoID servoID) {
             std::map<ServoID, utility::math::matrix::Transform3D> positions;
             utility::math::matrix::Transform3D runningTransform;
             // Variables to mask left and right leg differences:
             ServoID HIP_YAW, HIP_ROLL, HIP_PITCH, KNEE, ANKLE_PITCH, ANKLE_ROLL;
             int negativeIfRight = 1;
 
-            if (static_cast<bool>(isLeft)) {
+            if (servoID.isLeft()) {
                 HIP_YAW     = ServoID::L_HIP_YAW;
                 HIP_ROLL    = ServoID::L_HIP_ROLL;
                 HIP_PITCH   = ServoID::L_HIP_PITCH;
@@ -206,18 +202,15 @@ namespace motion {
 
             The basis 'faces' down its x axis.
         */
-        inline std::map<ServoID, utility::math::matrix::Transform3D> calculateArmJointPosition(
-            const KinematicsModel& model,
-            const Sensors& sensors,
-            ServoID servoID,
-            BodySide isLeft) {
+        inline std::map<ServoID, utility::math::matrix::Transform3D>
+        calculateArmJointPosition(const KinematicsModel& model, const Sensors& sensors, ServoID servoID) {
             std::map<ServoID, utility::math::matrix::Transform3D> positions;
             utility::math::matrix::Transform3D runningTransform;
             // Variables to mask left and right differences:
             ServoID SHOULDER_PITCH, SHOULDER_ROLL, ELBOW;
             int negativeIfRight = 1;
 
-            if (static_cast<bool>(isLeft)) {
+            if (servoID.isLeft()) {
                 SHOULDER_PITCH = ServoID::L_SHOULDER_PITCH;
                 SHOULDER_ROLL  = ServoID::L_SHOULDER_ROLL;
                 ELBOW          = ServoID::L_ELBOW;
@@ -287,22 +280,22 @@ namespace motion {
                 case ServoID::HEAD_PITCH: return calculateHeadJointPosition(model, sensors, servoID);
                 case ServoID::R_SHOULDER_PITCH:
                 case ServoID::R_SHOULDER_ROLL:
-                case ServoID::R_ELBOW: return calculateArmJointPosition(model, sensors, servoID, BodySide::RIGHT);
+                case ServoID::R_ELBOW: return calculateArmJointPosition(model, sensors, servoID);
                 case ServoID::L_SHOULDER_PITCH:
                 case ServoID::L_SHOULDER_ROLL:
-                case ServoID::L_ELBOW: return calculateArmJointPosition(model, sensors, servoID, BodySide::LEFT);
+                case ServoID::L_ELBOW: return calculateArmJointPosition(model, sensors, servoID);
                 case ServoID::R_HIP_YAW:
                 case ServoID::R_HIP_ROLL:
                 case ServoID::R_HIP_PITCH:
                 case ServoID::R_KNEE:
                 case ServoID::R_ANKLE_PITCH:
-                case ServoID::R_ANKLE_ROLL: return calculateLegJointPosition(model, sensors, servoID, BodySide::RIGHT);
+                case ServoID::R_ANKLE_ROLL: return calculateLegJointPosition(model, sensors, servoID);
                 case ServoID::L_HIP_YAW:
                 case ServoID::L_HIP_ROLL:
                 case ServoID::L_HIP_PITCH:
                 case ServoID::L_KNEE:
                 case ServoID::L_ANKLE_PITCH:
-                case ServoID::L_ANKLE_ROLL: return calculateLegJointPosition(model, sensors, servoID, BodySide::LEFT);
+                case ServoID::L_ANKLE_ROLL: return calculateLegJointPosition(model, sensors, servoID);
                 default: return std::map<ServoID, utility::math::matrix::Transform3D>();
             }
         }
