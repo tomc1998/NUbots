@@ -120,6 +120,13 @@ namespace input {
         }
         operator std::string() const;
 
+        bool isLeft() const {
+            return (value % 2) == ServoSide::LEFT;
+        }
+        bool isRight() const {
+            return (value % 2) == ServoSide::RIGHT;
+        }
+
         friend std::ostream& operator<<(std::ostream& out, const ServoID& val);
 
     private:
