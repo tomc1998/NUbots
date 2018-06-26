@@ -51,8 +51,8 @@ namespace motion {
         , kinematicsModel()
         , phase(0.0)
         , dt(1.0 / UPDATE_FREQUENCY)
-        , left_IK0()
-        , right_IK0()
+        , Htf_left()
+        , Htf_right()
         , jointGains() {
 
         on<Configuration>("IKWalk.yaml").then([this](const Configuration& config) {
@@ -192,19 +192,16 @@ namespace motion {
                 sensors.servo.emplace_back(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             }
 
-            left_IK0 = utility::motion::kinematics::calculateLegJointPosition(
-                kinematicsModel,
-                sensors,
-                ServoID::L_ANKLE_ROLL,
-                message::motion::BodySide::LEFT)[ServoID::L_ANKLE_ROLL];
-            right_IK0 = utility::motion::kinematics::calculateLegJointPosition(
-                kinematicsModel,
-                sensors,
-                ServoID::R_ANKLE_ROLL,
-                message::motion::BodySide::RIGHT)[ServoID::R_ANKLE_ROLL];
+            auto joints =
+                utility::motion::kinematics::calculateLegJointPosition(kinematicsModel, sensors, ServoID::L_ANKLE_ROLL);
+            Htf_left = joints[ServoID::L_ANKLE_ROLL];
 
-            log(left_IK0);
-            log(right_IK0);
+            joints =
+                utility::motion::kinematics::calculateLegJointPosition(kinematicsModel, sensors, ServoID::R_ANKLE_ROLL);
+            Htf_right = joints[ServoID::R_ANKLE_ROLL];
+
+            log("Htf_left:", Htf_left);
+            log("Htf_right:", Htf_right);
 
             // Init Humanoid Model
             // model = HumanoidModel(kinematicsModel.leg.UPPER_LEG_LENGTH,
@@ -391,8 +388,8 @@ namespace motion {
             posLeft.z() -= legsLength;
             posRight.z() -= legsLength;
 
-            posLeft  = convert<double, 3>(left_IK0 * convert<double, 3>(posLeft));
-            posRight = convert<double, 3>(right_IK0 * convert<double, 3>(posRight));
+                    posLeft  = convert<double, 3>(Htf_left * convert<double, 3>(posLeft));
+                    posRight = convert<double, 3>(Htf_right * convert<double, 3>(posRight));
 
             Eigen::AngleAxisd yaw(angleLeft.z(), Eigen::Vector3d::UnitZ());
             Eigen::AngleAxisd pitch(angleLeft.x(), Eigen::Vector3d::UnitY());

@@ -197,7 +197,7 @@ namespace motion {
         double phase;
         double dt;
 
-        utility::math::matrix::Transform3D left_IK0, right_IK0;
+        utility::math::matrix::Transform3D Htf_left, Htf_right;
 
         // Reaction handle for the main update loop, disabling when not moving will save unnecessary CPU
         ReactionHandle updateHandle;
