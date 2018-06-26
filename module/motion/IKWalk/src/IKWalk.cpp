@@ -28,6 +28,7 @@ namespace motion {
 
     using message::behaviour::MotionCommand;
     using message::behaviour::ServoCommand;
+    using message::input::Sensors;
     using message::motion::KinematicsModel;
     using message::motion::ServoTarget;
     using message::motion::StopCommand;
@@ -186,7 +187,7 @@ namespace motion {
             kinematicsModel = kinematics;
 
             // Figure out our kinematics for when all leg servos positions are zero
-            message::input::Sensors sensors;
+            Sensors sensors;
             for (size_t servo = 0; servo < ServoID::NUMBER_OF_SERVOS; servo++) {
                 sensors.servo.emplace_back(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
             }
