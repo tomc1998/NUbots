@@ -388,8 +388,8 @@ namespace motion {
             posLeft.z() -= legsLength;
             posRight.z() -= legsLength;
 
-                    posLeft  = convert<double, 3>(Htf_left * convert<double, 3>(posLeft));
-                    posRight = convert<double, 3>(Htf_right * convert<double, 3>(posRight));
+            posLeft  = convert<double, 3>(Htf_left * convert<double, 3>(posLeft));
+            posRight = convert<double, 3>(Htf_right * convert<double, 3>(posRight));
 
             Eigen::AngleAxisd yaw(angleLeft.z(), Eigen::Vector3d::UnitZ());
             Eigen::AngleAxisd pitch(angleLeft.x(), Eigen::Vector3d::UnitY());
@@ -406,12 +406,12 @@ namespace motion {
                               convert<double, 3>(posRight));
             bool rightValid = utility::motion::kinematics::legPoseValid(kinematicsModel, right, LimbID::RIGHT_LEG);
 
-            log(left);
-            log(right);
-            log(angleLeft);
-            log(angleRight);
-            log(posLeft);
-            log(posRight);
+            log("Left:", left);
+            log("Right:", right);
+            log("angleLeft:", angleLeft);
+            log("angleRight:", angleRight);
+            log("posLeft:", posLeft);
+            log("posRight:", posRight);
 
             if (leftValid && rightValid) {
                 // Increment given phase
