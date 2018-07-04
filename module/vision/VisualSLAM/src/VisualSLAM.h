@@ -21,21 +21,21 @@
 #define MODULE_VISION_VISUALSLAM_H
 
 #include <nuclear>
-#include "message/input/Image.h"
-#include "System.h"
 #include <string>
+#include "System.h"
+#include "message/input/Image.h"
 
 namespace module {
 namespace vision {
 
-    class LaunchMapping{};
-    class LaunchLoopClosing{};
-    class LaunchImageLoading{};
-    class PrintTcwFlag{};
+    class LaunchMapping {};
+    class LaunchLoopClosing {};
+    class LaunchImageLoading {};
+    class PrintTcwFlag {};
 
-    class Transform_CW{
-        public:
-            cv::Mat Tcw;
+    class Transform_CW {
+    public:
+        cv::Mat Tcw;
     };
 
     class VisualSLAM : public NUClear::Reactor {
@@ -45,26 +45,29 @@ namespace vision {
         explicit VisualSLAM(std::unique_ptr<NUClear::Environment> environment);
 
         void LoadImages(const std::string strPathToSequence,
-                    	std::vector<std::string> &vstrImageFilenames,
-                    	std::vector<std::chrono::microseconds> &vTimestamps);
+                        std::vector<std::string>& vstrImageFilenames,
+                        std::vector<std::chrono::microseconds>& vTimestamps);
 
     private:
-
         std::vector<std::string> vstrImageFilenames;
-    		std::vector<std::chrono::microseconds> vTimestamps; //in microseconds
+        std::vector<std::chrono::microseconds> vTimestamps;  // in microseconds
         std::string strVocFile;
         std::string strSettingsFile;
         System::eSensor cameraCombination;
         System SLAM;
-    		// Number of images to process
-    		int nImages;
 
-    		// Current image number we are processing
-    		int curImage; // current image being prepared for emission
-            int curFrame = 0; // current image frame received
+        // Flag for where images are coming from
+        int imageLoading;
+
+        // Number of images to process
+        int nImages;
+
+        // Current image number we are processing
+        int curImage;      // current image being prepared for emission
+        int curFrame = 0;  // current image frame received
 
 
-  		  // When we started playing this file
+        // When we started playing this file
         NUClear::clock::time_point start_time;
 
         // When we started this loop
@@ -80,13 +83,11 @@ namespace vision {
 
         // The first time that appears in the file
         std::chrono::microseconds first_timecode;
-    		uint imageWidth;
-    		uint imageHeight;
+        uint imageWidth;
+        uint imageHeight;
 
         std::ofstream logFile;
         std::string logFilePath;
-
-
     };
 }
 }
