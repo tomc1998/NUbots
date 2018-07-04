@@ -19,18 +19,18 @@
 
 #include "VisualSLAM.h"
 
-#include "extension/Configuration.h"
-#include "message/input/CameraParameters.h"
-#include "opencv2/core/core.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgcodecs/imgcodecs.hpp"
-//#include "utility/vision/fourcc.h"
 #include <chrono>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <nuclear>
+#include "extension/Configuration.h"
+#include "message/input/CameraParameters.h"
+#include "opencv2/core/core.hpp"
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgcodecs/imgcodecs.hpp"
 #include "stdio.h"
+#include "utility/vision/Vision.h"
 
 namespace module {
 namespace vision {
