@@ -88,6 +88,7 @@ namespace vision {
 
         std::ofstream logFile;
         std::string logFilePath;
+        std::string datasetFilePath;
     };
 }
 }

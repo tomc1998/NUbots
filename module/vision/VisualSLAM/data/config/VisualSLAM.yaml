@@ -6,3 +6,6 @@ strVocFile: "./Vocabulary/ORBvoc.txt"
 #strVocFile: "/home/vagrant/NUbots/module/vision/VisualSLAM/data/Vocabulary/ORBvoc.txt"
 cameraCombination: 0
 imageLoading: 2 # 0: images from Camera, 1: saved images real time, 2: saved images fast as possible
+datasetFilePath: "/home/vagrant/Datasets/NUbotsRoom_Dataset1/"
+#datasetFilePath: "/home/vagrant/Datasets/LoungeRoom_Dataset2/"
+logFilePath: "TimeStampLog.txt"

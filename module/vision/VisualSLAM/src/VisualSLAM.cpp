@@ -47,8 +47,9 @@ namespace vision {
             imageHeight       = config["imageHeight"].as<uint>();
             strSettingsFile   = config["strSettingsFile"].as<std::string>();
             strVocFile        = config["strVocFile"].as<std::string>();
+            datasetFilePath   = config["datasetFilePath"].as<std::string>();
             cameraCombination = static_cast<System::eSensor>(config["cameraCombination"].as<int>());
-            logFilePath       = "TimeStampLog.txt";
+            logFilePath       = config["logFilePath"].as<std::string>();
             imageLoading      = config["imageLoading"].as<uint>();
         });
 
@@ -65,8 +66,7 @@ namespace vision {
 
             if (imageLoading > 0) {
                 // Loading in timestamp and image filepath data
-                LoadImages("/home/vagrant/Datasets/NUbotsRoom_Dataset1/", vstrImageFilenames, vTimestamps);
-                // LoadImages("/home/vagrant/Datasets/LoungeRoom_Dataset2/", vstrImageFilenames, vTimestamps);
+                LoadImages(datasetFilePath, vstrImageFilenames, vTimestamps);
                 nImages = vstrImageFilenames.size();
 
 
