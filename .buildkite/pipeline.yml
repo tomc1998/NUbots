@@ -1,6 +1,9 @@
 steps:
   - label: ":package: Install toolchain and supporting packages"
     command: ".buildkite/install.sh"
+    env:
+      CMAKE_VERSION: "3.5.1"
+      TOOLCHAIN_VERSION: "3.0.1"
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE:-default}"
 
