@@ -1,0 +1,23 @@
+steps:
+  - label: ":package: Install toolchain and supporting packages"
+    command: ".buildkite/install.sh"
+    agents:
+      queue: "${BUILDKITE_AGENT_META_DATA_QUEUE:-default}"
+
+  - wait
+
+  - label: ":scroll: Validate code format"
+    command: ".buildkite/validate_format.sh"
+    agents:
+      queue: "${BUILDKITE_AGENT_META_DATA_QUEUE:-default}"
+
+  - wait
+
+  - label: ":hammer: Build code"
+    command: ".buildkite/install.sh"
+    artifact_paths: "build_native/*"
+    env:
+      PATH: "/usr/lib/ccache:$$PATH"
+    agents:
+      queue: "${BUILDKITE_AGENT_META_DATA_QUEUE:-default}"
+

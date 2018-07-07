@@ -1,0 +1,6 @@
+name: "NUbots"
+description: "Builds the NUbots codebase"
+steps:
+  - command: "buildkite-agent pipeline upload"
+    label: ":pipeline:"
+
