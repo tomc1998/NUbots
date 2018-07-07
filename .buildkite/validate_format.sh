@@ -31,5 +31,5 @@ done < <(find . -type f \( -name *.h \
                         -o -name *.ipp \
                         -o -name *.proto \) -print0)
 
-# If we failed somewhere this will exit 1 and fail travis
+# If we failed somewhere this will exit 1 and fail buildkite
 exit $ret

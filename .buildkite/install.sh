@@ -85,6 +85,7 @@ echo "#   Installing CMake v3.5.1   #"
 echo "###############################"
 /usr/bin/wget https://cmake.org/files/v3.5/cmake-3.5.1-Linux-x86_64.sh
 /bin/sh cmake-3.5.1-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir
+sudo cp puppet/modules/files/files/FindBoost.cmake /usr/local/share/cmake-3.5/Modules/FindBoost.cmake
 
 echo "###############################"
 echo "#   Installing Intel OpenCL   #"
