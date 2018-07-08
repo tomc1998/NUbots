@@ -1,11 +1,17 @@
 steps:
-  - label: ":package: Install toolchain and supporting packages"
-    command: ".buildkite/install.sh"
-    env:
-      CMAKE_VERSION: "3.5.1"
-      TOOLCHAIN_VERSION: "3.0.1"
+  - label: ":docker: Install toolchain and supporting packages"
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE:-default}"
+    plugins:
+      docker-compose#v2.5.0:
+        build: nubots
+        workdir: .
+        config:
+          - ./docker-compose.yml
+        env:
+          - TOOLCHAIN_VERSION="3.0.1"
+          - CMAKE_VERSION="3.5.1"
+
 
   - wait
 
@@ -13,14 +19,32 @@ steps:
     command: ".buildkite/validate_format.sh"
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE:-default}"
+    plugins:
+      docker-compose#v2.5.0:
+        run: nubots
+        workdir: .
+        config:
+          - ./docker-compose.yml
+        env:
+          - TOOLCHAIN_VERSION="3.0.1"
+          - CMAKE_VERSION="3.5.1"
 
   - wait
 
   - label: ":hammer: Build code"
     command: ".buildkite/install.sh"
     artifact_paths: "build_native/*"
-    env:
-      PATH: "/usr/lib/ccache:$$PATH"
     agents:
       queue: "${BUILDKITE_AGENT_META_DATA_QUEUE:-default}"
+    plugins:
+      docker-compose#v2.5.0:
+        run: nubots
+        workdir: .
+        config:
+          - ./docker-compose.yml
+        env:
+          PATH: "/usr/lib/ccache:$$PATH"
+        env:
+          - TOOLCHAIN_VERSION="3.0.1"
+          - CMAKE_VERSION="3.5.1"
 

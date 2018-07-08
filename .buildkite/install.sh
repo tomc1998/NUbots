@@ -117,7 +117,7 @@ toolchain_installed_version=$(dpkg -l | grep '^ii' | grep nubots-toolchain | awk
 # Only download the toolchain if it either isn't installed already or we want a different version
 if [ "x${toolchain_installed_version}" != "x${TOOLCHAIN_VERSION}" ]
 then
-    # Remove the toolchain if the wrong version is installed
+    # Remove (and purge) the toolchain if the wrong version is installed
     if [ "x${toolchain_installed_version}" != "x" ]
     then
         sudo dpkg -P nubots-toolchain

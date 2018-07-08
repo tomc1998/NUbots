@@ -1,0 +1,11 @@
+version: '3'
+services:
+  nubots:
+    image: nubots:${TOOLCHAIN_VERSION}
+    cache_from: nubots:${TOOLCHAIN_VERSION}
+    environment:
+      - TOOLCHAIN_VERSION="${TOOLCHAIN_VERSION}"
+      - CMAKE_VERSION="${CMAKE_VERSION}"
+    build:
+      context: .
+      dockerfile: Dockerfile
