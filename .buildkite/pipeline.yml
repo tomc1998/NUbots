@@ -7,10 +7,7 @@ steps:
         build: nubots
         workdir: .
         config:
-          - ./docker-compose.yml
-        env:
-          - TOOLCHAIN_VERSION="3.0.1"
-          - CMAKE_VERSION="3.5.1"
+          - docker-compose.yml
 
 
   - wait
@@ -24,10 +21,7 @@ steps:
         run: nubots
         workdir: .
         config:
-          - ./docker-compose.yml
-        env:
-          - TOOLCHAIN_VERSION="3.0.1"
-          - CMAKE_VERSION="3.5.1"
+          - docker-compose.yml
 
   - wait
 
@@ -41,10 +35,6 @@ steps:
         run: nubots
         workdir: .
         config:
-          - ./docker-compose.yml
+          - docker-compose.yml
         env:
           PATH: "/usr/lib/ccache:$$PATH"
-        env:
-          - TOOLCHAIN_VERSION="3.0.1"
-          - CMAKE_VERSION="3.5.1"
-
