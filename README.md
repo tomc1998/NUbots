@@ -1,4 +1,4 @@
-NUbots Codebase
+NUbots Codebase [![Build status](https://badge.buildkite.com/9869cc25346646a15c39f95e3159a43fbd65755ad458648a06.svg)](https://buildkite.com/NUbots-2/nubots?branch=master)
 ==========================
 
 Vagrant
