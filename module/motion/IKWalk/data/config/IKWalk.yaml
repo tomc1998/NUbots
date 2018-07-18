@@ -9,7 +9,7 @@ supportPhaseRatio: 0.0
 # Lateral offset on default foot position in meters (foot lateral distance)
 # 0 is default
 # > 0 is both feet external offset
-footYOffset: 0.05
+footYOffset: 0.08
 
 # Vertical rise height of each foot in meters (positive)
 riseGain: 0.035
@@ -17,7 +17,7 @@ riseGain: 0.035
 # Vertical foot offset from trunk in meters (positive)
 # 0 is in init position
 # > 0 set the robot lower to the ground
-trunkZOffset: 0.02
+trunkZOffset: 0.00
 
 # Lateral trunk oscillation amplitude in meters (positive)
 swingGain: 0.02
@@ -49,7 +49,7 @@ swingVel: 4.0
 # Forward trunk-foot offset with respect to foot in meters
 # >0 moves the trunk forward
 # <0 moves the trunk backward
-trunkXOffset: 0.20
+trunkXOffset: 0.00
 
 # Lateral trunk-foot offset with respect to foot in meters
 # >0 moves the trunk on the left
