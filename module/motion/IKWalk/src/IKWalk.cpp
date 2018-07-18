@@ -200,8 +200,8 @@ namespace motion {
                 utility::motion::kinematics::calculateLegJointPosition(kinematicsModel, sensors, ServoID::R_ANKLE_ROLL);
             Htf_right = joints[ServoID::R_ANKLE_ROLL];
 
-            log("Htf_left:", Htf_left);
-            log("Htf_right:", Htf_right);
+            // log("Htf_left:", Htf_left);
+            // log("Htf_right:", Htf_right);
 
             // Init Humanoid Model
             // model = HumanoidModel(kinematicsModel.leg.UPPER_LEG_LENGTH,
@@ -388,9 +388,13 @@ namespace motion {
             posLeft.z() -= legsLength;
             posRight.z() -= legsLength;
 
+            // Transform left and right foot positions into torso space
             posLeft  = convert<double, 3>(Htf_left * convert<double, 3>(posLeft));
             posRight = convert<double, 3>(Htf_right * convert<double, 3>(posRight));
+            log(posLeft);
+            log(posRight);
 
+            // Convert left leg into a homogeneous transform
             Eigen::AngleAxisd yaw(angleLeft.z(), Eigen::Vector3d::UnitZ());
             Eigen::AngleAxisd pitch(angleLeft.x(), Eigen::Vector3d::UnitY());
             Eigen::AngleAxisd roll(angleLeft.y(), Eigen::Vector3d::UnitX());
@@ -399,19 +403,14 @@ namespace motion {
                              convert<double, 3>(posLeft));
             bool leftValid = utility::motion::kinematics::legPoseValid(kinematicsModel, left, LimbID::LEFT_LEG);
 
+            // Convert right leg into a homogeneous transform
             yaw   = Eigen::AngleAxisd(angleRight.z(), Eigen::Vector3d::UnitZ());
             pitch = Eigen::AngleAxisd(angleRight.x(), Eigen::Vector3d::UnitY());
             roll  = Eigen::AngleAxisd(angleRight.y(), Eigen::Vector3d::UnitX());
+
             Transform3D right(Rotation3D(convert<double, 3, 3>((yaw * roll * pitch).matrix())),
                               convert<double, 3>(posRight));
             bool rightValid = utility::motion::kinematics::legPoseValid(kinematicsModel, right, LimbID::RIGHT_LEG);
-
-            log("Left:", left);
-            log("Right:", right);
-            log("angleLeft:", angleLeft);
-            log("angleRight:", angleRight);
-            log("posLeft:", posLeft);
-            log("posRight:", posRight);
 
             if (leftValid && rightValid) {
                 // Increment given phase
@@ -438,11 +437,15 @@ namespace motion {
             else if (!leftValid) {
                 log<NUClear::FATAL>("Invalid walk parameters. Left leg pose is not valid.");
                 log<NUClear::FATAL>(left);
+                log<NUClear::FATAL>(angleLeft);
+                log<NUClear::FATAL>(posLeft);
             }
 
             else {
                 log<NUClear::FATAL>("Invalid walk parameters. Right leg pose is not valid.");
                 log<NUClear::FATAL>(right);
+                log<NUClear::FATAL>(angleRight);
+                log<NUClear::FATAL>(posRight);
             }
 
             if (params.enabledGain == 0.0) {
