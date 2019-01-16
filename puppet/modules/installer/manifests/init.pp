@@ -261,7 +261,7 @@ define installer (
           creates     => "${create}",
           onlyif      => "test \"${method}\" = \"boost\" ",
           command     => "${prebuild_cmd} &&
-                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --without-libraries=python &&
+                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --with-python=python3 --with-python-root=\"${prefix}\"
                           ./bjam include=\"${prefix}/${arch}/include\" library-path=\"${prefix}/${arch}/lib\" ${args_str} -j\$(nproc) -q \\
                                 cflags=\"${flags}\" cxxflags=\"${flags}\" linkflags=\"${linkflags}\" &&
                           ./bjam install &&
