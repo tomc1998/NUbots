@@ -208,8 +208,11 @@ namespace motion {
         /**
          * Cycle given phase between 0 and 1
          */
-        double boundPhase(double phase) const {
-            return phase * utility::math::sgn(phase) - int(phase);
+        double boundPhase(const double& phase) const {
+            if (phase < 0.0) {
+                NUClear::log<NUClear::WARN>("Phase is negative");
+            }
+            return std::fmod(phase, 1.0) * utility::math::sgn(phase);
         }
 
     public:

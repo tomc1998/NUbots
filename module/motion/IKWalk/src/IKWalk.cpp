@@ -159,6 +159,8 @@ namespace motion {
                     jointGains[i] = gainLegs;
                 }
             }
+
+            updateHandle.enable();
         });
 
 
@@ -287,13 +289,14 @@ namespace motion {
 
             // Compute feet lateral movement oscillation
             leftY += params.enabledGain * params.lateralGain
-                     * (stepSpline.pos(phaseLeft) + 0.5 * utility::math::sign(params.lateralGain));
+                     * (stepSpline.pos(phaseLeft) + 0.5 * ((params.lateralGain >= 0.0) ? 1.0 : -1.0));
+
             rightY += params.enabledGain * params.lateralGain
-                      * (stepSpline.pos(phaseRight) - 0.5 * utility::math::sign(params.lateralGain));
+                      * (stepSpline.pos(phaseRight) + 0.5 * ((params.lateralGain >= 0.0) ? -1.0 : 1.0));
 
             // Set feet lateral offset (feet distance from trunk centre)
             leftY += params.footYOffset;
-            rightY += -params.footYOffset;
+            rightY -= params.footYOffset;
 
             // Compute feet vertical (rise) oscillation and offset
             double leftZ  = params.enabledGain * params.riseGain * riseSpline.pos(phaseLeft);
@@ -356,27 +359,27 @@ namespace motion {
             posRight = rotation * posRight;
 
             // Apply trunk X-Y offset
-            posLeft(0) -= params.trunkXOffset;
-            posRight(0) -= params.trunkXOffset;
-            posLeft(1) -= params.trunkYOffset;
-            posRight(1) -= params.trunkYOffset;
+            posLeft.x() -= params.trunkXOffset;
+            posRight.x() -= params.trunkXOffset;
+            posLeft.y() -= params.trunkYOffset;
+            posRight.y() -= params.trunkYOffset;
 
             // In case of trunk Roll rotation, a height (Z)
             // positive offset have to be applied on external foot to
             // set both feet on same level
             double deltaLen = kinematicsModel.leg.HIP_OFFSET_Y * std::tan(rollVal);
             if (rollVal > 0.0) {
-                posRight(2) += deltaLen;
+                posRight.z() += deltaLen;
             }
             else if (rollVal < 0.0) {
-                posLeft(2) -= deltaLen;
+                posLeft.z() -= deltaLen;
             }
 
             // TODO In case of oscillating trunkRoll or swingRoll enabled XXX
             // TODO feet get an unwanted lateral oscillation XXX
 
-            double legsLength = kinematicsModel.leg.UPPER_LEG_LENGTH + kinematicsModel.leg.LOWER_LEG_LENGTH
-                                + kinematicsModel.leg.FOOT_HEIGHT;
+            const double legsLength = kinematicsModel.leg.UPPER_LEG_LENGTH + kinematicsModel.leg.LOWER_LEG_LENGTH
+                                      + kinematicsModel.leg.FOOT_HEIGHT;
             // Trunk X and Y offset is applied to compensate
             // Pitch and Roll rotation. It is better for tuning if
             // trunk pitch or roll rotation do not apply offset on
@@ -391,8 +394,6 @@ namespace motion {
             // Transform left and right foot positions into torso space
             posLeft  = convert<double, 3>(Htf_left * convert<double, 3>(posLeft));
             posRight = convert<double, 3>(Htf_right * convert<double, 3>(posRight));
-            log(posLeft);
-            log(posRight);
 
             // Convert left leg into a homogeneous transform
             Eigen::AngleAxisd yaw(angleLeft.z(), Eigen::Vector3d::UnitZ());
@@ -411,6 +412,9 @@ namespace motion {
             Transform3D right(Rotation3D(convert<double, 3, 3>((yaw * roll * pitch).matrix())),
                               convert<double, 3>(posRight));
             bool rightValid = utility::motion::kinematics::legPoseValid(kinematicsModel, right, LimbID::RIGHT_LEG);
+
+            log(left);
+            log(right);
 
             if (leftValid && rightValid) {
                 // Increment given phase
@@ -434,14 +438,14 @@ namespace motion {
                 emit(std::move(waypoints));
             }
 
-            else if (!leftValid) {
+            if (!leftValid) {
                 log<NUClear::FATAL>("Invalid walk parameters. Left leg pose is not valid.");
                 log<NUClear::FATAL>(left);
                 log<NUClear::FATAL>(angleLeft);
                 log<NUClear::FATAL>(posLeft);
             }
 
-            else {
+            if (!rightValid) {
                 log<NUClear::FATAL>("Invalid walk parameters. Right leg pose is not valid.");
                 log<NUClear::FATAL>(right);
                 log<NUClear::FATAL>(angleRight);
@@ -588,6 +592,7 @@ namespace motion {
                 params.stepGain    = 0.0;
                 params.lateralGain = 0.0;
                 params.turnGain    = 0.0;
+                updateHandle.enable();
             }
         });
 
@@ -618,6 +623,7 @@ namespace motion {
             params.stepGain    = 0.0;
             params.lateralGain = 0.0;
             params.turnGain    = 0.0;
+            updateHandle.enable();
         });
     }  // namespace motion
 }  // namespace motion
