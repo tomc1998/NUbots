@@ -85,7 +85,8 @@ class build_tools {
                 pip3 install termcolor &&
                 pip3 install protobuf==3.5.0.post1 &&
                 pip3 install pillow &&
-                pip3 install xxhash",
+                pip3 install xxhash &&
+                pip3 install numpy",
     path        =>  [ '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
     timeout     => 0,
     provider    => 'shell',
@@ -108,17 +109,9 @@ class build_tools {
   # Manually install cmake
   exec {'install-cmake':
     creates => '/usr/local/bin/cmake',
-    command => '/usr/bin/wget https://cmake.org/files/v3.5/cmake-3.5.1-Linux-x86_64.sh \
-             && /bin/sh cmake-3.5.1-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir \
-             && rm cmake-3.5.1-Linux-x86_64.sh',
-  }
-
-  # Fix up FindBoost.cmake
-  file { "/usr/local/share/cmake-3.5/Modules/FindBoost.cmake":
-    path    => "/usr/local/share/cmake-3.5/Modules/FindBoost.cmake",
-    ensure  => present,
-    source  => 'puppet:///modules/files/FindBoost.cmake',
-    require => [ Exec['install-cmake'], ],
+    command => '/usr/bin/wget https://github.com/Kitware/CMake/releases/download/v3.13.3/cmake-3.13.3-Linux-x86_64.sh \
+             && /bin/sh cmake-3.13.3-Linux-x86_64.sh --prefix=/usr/local --exclude-subdir \
+             && rm cmake-3.13.3-Linux-x86_64.sh',
   }
 
   exec { "Intel_OpenCL_SDK":

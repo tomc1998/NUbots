@@ -261,10 +261,9 @@ define installer (
           creates     => "${create}",
           onlyif      => "test \"${method}\" = \"boost\" ",
           command     => "${prebuild_cmd} &&
-                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --without-libraries=python &&
-                          ./bjam include=\"${prefix}/${arch}/include\" library-path=\"${prefix}/${arch}/lib\" ${args_str} -j\$(nproc) -q \\
-                                cflags=\"${flags}\" cxxflags=\"${flags}\" linkflags=\"${linkflags}\" &&
-                          ./bjam install &&
+                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --with-python=\$(which python) &&
+                          ./bjam include=\"${prefix}/${arch}/include\" library-path=\"${prefix}/${arch}/lib\" ${args_str} -j\$(nproc) -q -a \\
+                                cflags=\"${flags}\" cxxflags=\"${flags}\" linkflags=\"${linkflags}\" variant=release threading=multi --python-buildid=py3 install
                           ${postbuild_cmd}",
           cwd         => "${prefix}/${arch}/src/${name}/${src_dir}",
           environment => $environment,
