@@ -191,6 +191,7 @@ define installer (
       $arg      = regsubst($args["${arch}"], 'ZLIB_PATH', "${prefix}/${arch}", 'G')
       $arg1     = regsubst($arg, 'PREFIX', "${prefix}/${arch}", 'G')
       $arg2     = regsubst($arg1, 'PROTOC_PATH', "${prefix}/bin/protoc", 'G')
+      $arg3     = regsubst($arg2, 'PYTHON_PATH', "${prefix}/bin/python3", 'G')
       $args_str = $arg2.reduce |$args_str, $value| { "${args_str} ${value}" }
     }
 
@@ -261,9 +262,11 @@ define installer (
           creates     => "${create}",
           onlyif      => "test \"${method}\" = \"boost\" ",
           command     => "${prebuild_cmd} &&
-                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --with-python=\$(which python) &&
+                          if [ -e \"project-config.jam\" ];  then rm \"project-config.jam*\"; fi &&
+                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --with-python=\"${prefix}/bin/python3\"  --with-python-root=\"${prefix}\" --with-python-version=3.6 &&
+                          echo \"using python : 3.6 : \\\"${prefix}/bin/python3\\\" : \\\"${prefix}/include/python3.6m\\\" : \\\"${prefix}/lib\\\" ;\" >> \"project-config.jam\"
                           ./bjam include=\"${prefix}/${arch}/include\" library-path=\"${prefix}/${arch}/lib\" ${args_str} -j\$(nproc) -q -a \\
-                                cflags=\"${flags}\" cxxflags=\"${flags}\" linkflags=\"${linkflags}\" variant=release threading=multi --python-buildid=py3 install
+                                cflags=\"${flags}\" cxxflags=\"${flags}\" linkflags=\"${linkflags}\" variant=release threading=multi --layout=system install --debug-configuration > install_log
                           ${postbuild_cmd}",
           cwd         => "${prefix}/${arch}/src/${name}/${src_dir}",
           environment => $environment,
