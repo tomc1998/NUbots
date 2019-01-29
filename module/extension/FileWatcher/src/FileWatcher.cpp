@@ -17,6 +17,8 @@
 
 #include "FileWatcher.h"
 
+#include <libfswatch/c++/monitor_factory.hpp>
+
 #include "extension/FileWatch.h"
 #include "utility/file/fileutil.h"
 
