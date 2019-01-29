@@ -69,29 +69,23 @@ class build_tools {
   package { 'zlib1g-dev': ensure => latest, }
   package { 'libjpeg-turbo8-dev': ensure => latest, }
 
+  package { 'libgdbm-dev': ensure => latest, }
+  package { 'libsqlite3-dev': ensure => latest, }
+  package { 'tk-dev': ensure => latest, }
+  package { 'libssl-dev': ensure => latest, }
+  package { 'openssl': ensure => latest, }
+  package { 'libffi-dev': ensure => latest, }
+  package { 'libz-dev': ensure => latest, }
+  package { 'libreadline-dev': ensure => latest, }
+  package { 'libncursesw5-dev': ensure => latest, }
+  package { 'libbz2-dev': ensure => latest, }
+
   # CM730 firmware compilation.
   package { 'gcc-arm-none-eabi': ensure => latest, }
   package { 'libnewlib-arm-none-eabi': ensure => latest, }
 
   # System libraries
   package { 'libasound2-dev': ensure => latest, }
-
-  # We need to match the protobuf version with the one we install in the toolchain.
-  exec {'install_python3_packages':
-    command => "pip3 install pyparsing &&
-                pip3 install pydotplus &&
-                pip3 install pygments &&
-                pip3 install stringcase &&
-                pip3 install termcolor &&
-                pip3 install protobuf==3.5.0.post1 &&
-                pip3 install pillow &&
-                pip3 install xxhash &&
-                pip3 install numpy",
-    path        =>  [ '/usr/local/bin', '/usr/local/sbin/', '/usr/bin/', '/usr/sbin/', '/bin/', '/sbin/' ],
-    timeout     => 0,
-    provider    => 'shell',
-    require => [ Package['python3-pip'], Package['zlib1g-dev'], Package['libjpeg-turbo8-dev'], ],
-  }
 
   # SETUP OUR ALTERNATIVES SO WE USE THE CORRECT COMPILER
   exec {'fix_compiler_environment':
