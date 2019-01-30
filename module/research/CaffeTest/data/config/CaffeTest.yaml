@@ -1,0 +1,5 @@
+model_file: "modelfiletest.txt"
+trained_file: "trainedfiletest.txt"
+mean_file: "meanfiletest.txt"
+label_file: "labelfiletest.txt"
+image_file: "imagefiletest.txt"
