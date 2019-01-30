@@ -263,10 +263,10 @@ define installer (
           onlyif      => "test \"${method}\" = \"boost\" ",
           command     => "${prebuild_cmd} &&
                           if [ -e \"project-config.jam\" ];  then rm \"project-config.jam*\"; fi &&
-                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --with-python=\"${prefix}/bin/python3\"  --with-python-root=\"${prefix}\" --with-python-version=3.6 &&
+                          ./bootstrap.sh --prefix=\"${prefix}/${arch}\" --with-python=\"${prefix}/bin/python3\"  --with-python-root=\"${prefix}\" --with-python-version=3.6 | tee bootstrap.log &&
                           echo \"using python : 3.6 : \\\"${prefix}/bin/python3\\\" : \\\"${prefix}/include/python3.6m\\\" : \\\"${prefix}/lib\\\" ;\" >> \"project-config.jam\"
                           ./bjam include=\"${prefix}/${arch}/include\" library-path=\"${prefix}/${arch}/lib\" ${args_str} -j\$(nproc) -q -a \\
-                                cflags=\"${flags}\" cxxflags=\"${flags}\" linkflags=\"${linkflags}\" variant=release threading=multi --layout=system install --debug-configuration > install_log
+                                cflags=\"${flags}\" cxxflags=\"${flags}\" linkflags=\"${linkflags}\" variant=release threading=multi --layout=system install --debug-configuration -d2 | tee install.log
                           ${postbuild_cmd}",
           cwd         => "${prefix}/${arch}/src/${name}/${src_dir}",
           environment => $environment,
