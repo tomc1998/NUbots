@@ -1,5 +1,12 @@
+#define Scalar float
+#define Scalar2 float2
+#define Scalar3 float3
+#define Scalar4 float4
+#define Scalar8 float8
+#define Scalar16 float16
+
 /**
- * Projects visual mesh points to a Fisheye camera with equisolid projection
+ * Projects visual mesh points to a Fisheye camera with equidistant projection
  *
  * @param points        VisualMesh unit vectors
  * @param indices       map from local indices to global indices
@@ -9,12 +16,12 @@
  * @param dimensions    the dimensions of the input image
  * @param out           the output image coordinates
  */
-kernel void project_equisolid(global const Scalar4* points,
-                              global int* indices,
-                              const Scalar16 Rco,
-                              const Scalar f,
-                              const int2 dimensions,
-                              global Scalar2* out) {
+kernel void project_equidistant(global const Scalar4* points,
+                                global int* indices,
+                                const Scalar16 Rco,
+                                const Scalar f,
+                                const int2 dimensions,
+                                global Scalar2* out) {
 
     const int index = get_global_id(0);
 
@@ -29,7 +36,7 @@ kernel void project_equisolid(global const Scalar4* points,
 
     // Calculate some intermediates
     const Scalar theta     = acos(ray.x);
-    const Scalar r         = (Scalar)(2.0) * f * sin(theta * (Scalar)(0.5));
+    const Scalar r         = f * theta;
     const Scalar sin_theta = sin(theta);
 
     // Work out our pixel coordinates as a 0 centred image with x to the left and y up (screen space)
