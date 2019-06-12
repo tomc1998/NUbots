@@ -13,8 +13,8 @@ namespace vision {
         // Build our classification network
         std::vector<std::vector<std::pair<std::vector<std::vector<float>>, std::vector<float>>>> network;
 
-        std::unique_ptr<mesh::VisualMesh<float>> mesh_ptr;
-        mesh::VisualMesh<float>::Classifier classifier;
+        std::unique_ptr<visualmesh::VisualMesh<float>> mesh_ptr;
+        visualmesh::VisualMesh<float>::Classifier classifier;
 
         bool draw_mesh;
         int colour_type;

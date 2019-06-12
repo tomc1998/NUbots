@@ -14,6 +14,7 @@
 
 #include "utility/nusight/NUhelpers.h"
 #include "utility/support/Timer.hpp"
+#include "utility/vision/Vision.h"
 
 namespace module {
 namespace vision {
@@ -36,13 +37,11 @@ namespace vision {
 
             // Load our weights and biases
             for (const auto& conv : config["network"].config) {
-
                 // New conv layer
                 network.emplace_back();
                 auto& net_conv = network.back();
 
                 for (const auto& layer : conv) {
-
                     // New network layer
                     net_conv.emplace_back();
                     auto& net_layer = net_conv.back();
@@ -73,11 +72,13 @@ namespace vision {
         // TODO: Recreate mesh when network configuration changes
         on<Startup, With<FieldDescription>, With<CameraParameters>>().then([this](const FieldDescription& field,
                                                                                   const CameraParameters& cam) {
-            mesh_ptr = std::make_unique<mesh::VisualMesh<float>>(mesh::Sphere<float>(0, field.ball_radius, 4, 10),
-                                                                 0.5,
-                                                                 1.0,
-                                                                 50,
-                                                                 cam.FOV.maxCoeff() / cam.imageSizePixels.maxCoeff());
+            mesh_ptr =
+                std::make_unique<visualmesh::VisualMesh<float>>(*this,
+                                                                visualmesh::Sphere<float>(0, field.ball_radius, 4, 10),
+                                                                0.5,
+                                                                1.0,
+                                                                50,
+                                                                cam.FOV.maxCoeff() / cam.imageSizePixels.maxCoeff());
             // Make the classifier
             classifier = mesh_ptr->make_classifier(network);
         });
@@ -91,21 +92,21 @@ namespace vision {
             std::array<std::array<float, 4>, 4> Hoc;
             Eigen::Map<Eigen::Matrix<float, 4, 4, Eigen::RowMajor>>(Hoc[0].data()) = Hcw.inverse().matrix();
 
-            mesh::VisualMesh<float>::Lens lens;
+            visualmesh::VisualMesh<float>::Lens lens;
             switch (cam.lens.value) {
                 case CameraParameters::LensType::RADIAL:
-                    lens.projection   = mesh::VisualMesh<float>::Lens::EQUIDISTANT;
+                    lens.projection   = visualmesh::VisualMesh<float>::Lens::EQUIDISTANT;
                     lens.focal_length = 1.0 / cam.radial.radiansPerPixel;
                     break;
                 case CameraParameters::LensType::PINHOLE:
-                    lens.projection   = mesh::VisualMesh<float>::Lens::RECTILINEAR;
+                    lens.projection   = visualmesh::VisualMesh<float>::Lens::RECTILINEAR;
                     lens.focal_length = cam.pinhole.focalLengthPixels;
                     break;
             }
             lens.dimensions = {{int(img.dimensions[0]), int(img.dimensions[1])}};
             lens.fov        = cam.FOV.x();
 
-            auto results = classifier(img.data.data(), mesh::VisualMesh<float>::FOURCC(img.format), Hoc, lens);
+            auto results = classifier(img.data.data(), utility::vision::FOURCC(img.format), Hoc, lens);
 
             // Get the mesh that was used so we can make our message
             const auto& m = mesh_ptr->height(Hoc[2][3]);
@@ -135,7 +136,6 @@ namespace vision {
                 msg->classifications.emplace_back(c.first, c.second);
             }
 
-
             // -- Graphing for NUsight
             msg->classifications.emplace_back(results.classifications.front().first,
                                               results.classifications.front().second);
@@ -163,7 +163,6 @@ namespace vision {
                 }
 
                 for (uint i = 0; i < msg->coordinates.size(); ++i) {
-
                     Eigen::Vector2i p1(msg->coordinates[i]);
 
                     Eigen::Vector4d colour;
