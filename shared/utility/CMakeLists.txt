@@ -13,28 +13,35 @@ FIND_PACKAGE(glib2 REQUIRED)
 INCLUDE_DIRECTORIES(SYSTEM ${Aravis_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(SYSTEM ${glib2_INCLUDE_DIRS})
 
-#Set project name found variable
+# Required for opencl utility
+FIND_PACKAGE(OpenCL REQUIRED)
+INCLUDE_DIRECTORIES(SYSTEM ${OpenCL_INCLUDE_DIR})
+
+# Set project name found variable
 STRING(TOUPPER ${CMAKE_PROJECT_NAME} PROJECT_NAME)
 SET(${PROJECT_NAME}_PROJECT_FOUND TRUE)
 
-#Include tools
+# Clear our list of data files
+UNSET(NUCLEAR_UTILITY_DATA_FILES CACHE)
+
+# Include tools
 INCLUDE(ConfigureUtilities.cmake)
 
-#Note where we are
+# Note where we are
 SET(NUTILITIES_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-#Find all subdirectories
+# Find all subdirectories
 SUBDIRLIST(directories ${CMAKE_CURRENT_SOURCE_DIR})
 
-#initialise variables which will contain our collected files and libs
+# Initialise variables which will contain our collected files and libs
 UNSET(NUTILITIES_LIBRARIES_FILES CACHE)
 
-#Add each subdirectory with selection for loaded libraries
+# Add each subdirectory with selection for loaded libraries
 FOREACH(dir ${directories})
 	ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/${dir})
 ENDFOREACH()
 
-#Compile the nutilities library
+# Compile the nutilities library
 ADD_LIBRARY(nutilities ${NUTILITIES_LIBRARIES_FILES})
 
 # Link in our messaging library to ensure they are built first

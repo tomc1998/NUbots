@@ -1,5 +1,11 @@
-#ifndef OPENCL_ERROR_CATEGORY
-#define OPENCL_ERROR_CATEGORY
+#ifndef UTILITY_OPENCL_ERROR_CATEGORY_HPP
+#define UTILITY_OPENCL_ERROR_CATEGORY_HPP
+
+#if defined(__APPLE__) || defined(__MACOSX)
+#include <OpenCL/opencl.h>
+#else
+#include <CL/opencl.h>
+#endif  // !__APPLE__
 
 enum class opencl_error_code {
     SUCCESS                                   = CL_SUCCESS,
@@ -68,7 +74,6 @@ namespace std {
 template <>
 struct is_error_condition_enum<opencl_error_code> : public true_type {};
 }  // namespace std
-
 
 class opencl_error_category_t : public std::error_category {
 public:
@@ -235,4 +240,4 @@ std::string opencl_error_category_t::message(int code) const noexcept {
     }
 }
 
-#endif  // OPENCL_ERROR_CATEGORY
+#endif  // UTILITY_OPENCL_ERROR_CATEGORY_HPP
