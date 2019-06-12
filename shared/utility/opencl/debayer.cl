@@ -1,6 +1,4 @@
-const sampler_t bayer_sampler  = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
-const sampler_t interp_sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_LINEAR;
-
+const sampler_t bayer_sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP | CLK_FILTER_NEAREST;
 
 enum FOURCC {
     GREY    = 0x59455247,
@@ -31,12 +29,12 @@ enum FOURCC {
 };
 
 
-float fetch(read_only image2d_t raw_image, sampler_t sampler, float2 pos) {
-    return read_imagef(raw_image, sampler, pos).x;
+float fetch(read_only image2d_t raw_image, float2 pos) {
+    return read_imagef(raw_image, bayer_sampler, pos).x;
 }
 
 // http://graphics.cs.williams.edu/papers/BayerJGT09/
-float4 bayerToRGB(read_only image2d_t raw_image, sampler_t sampler, float2 coord, float2 first_red) {
+float4 bayerToRGB(read_only image2d_t raw_image, float2 coord, float2 first_red) {
     float4 center = (float4){0.0f, 0.0f, 0.0f, 0.0f};
     center.xy     = coord;
     center.zw     = coord + first_red;
@@ -44,16 +42,16 @@ float4 bayerToRGB(read_only image2d_t raw_image, sampler_t sampler, float2 coord
     float4 x_coord = center.x + (float4){-2.0f, -1.0f, 1.0f, 2.0f};
     float4 y_coord = center.y + (float4){-2.0f, -1.0f, 1.0f, 2.0f};
 
-    float C         = fetch(raw_image, sampler, center.xy);  // ( 0, 0)
+    float C         = fetch(raw_image, center.xy);  // ( 0, 0)
     const float4 kC = {0.5f, 0.75f, 0.625f, 0.625f};
 
     // Determine which of four types of pixels we are on.
     float2 alternate = fmod(floor(center.zw), 2.0f);
 
-    float4 Dvec = (float4){fetch(raw_image, sampler, (float2){x_coord.y, y_coord.y}),   // (-1,-1)
-                           fetch(raw_image, sampler, (float2){x_coord.y, y_coord.z}),   // (-1, 1)
-                           fetch(raw_image, sampler, (float2){x_coord.z, y_coord.y}),   // ( 1,-1)
-                           fetch(raw_image, sampler, (float2){x_coord.z, y_coord.z})};  // ( 1, 1)
+    float4 Dvec = (float4){fetch(raw_image, (float2){x_coord.y, y_coord.y}),   // (-1,-1)
+                           fetch(raw_image, (float2){x_coord.y, y_coord.z}),   // (-1, 1)
+                           fetch(raw_image, (float2){x_coord.z, y_coord.y}),   // ( 1,-1)
+                           fetch(raw_image, (float2){x_coord.z, y_coord.z})};  // ( 1, 1)
 
     float4 PATTERN = (kC.xyz * C).xyzz;
 
@@ -63,15 +61,15 @@ float4 bayerToRGB(read_only image2d_t raw_image, sampler_t sampler, float2 coord
     Dvec.xy += Dvec.zw;
     Dvec.x += Dvec.y;
 
-    float4 value = (float4){fetch(raw_image, sampler, (float2){center.x, y_coord.x}),   // ( 0,-2)
-                            fetch(raw_image, sampler, (float2){center.x, y_coord.y}),   // ( 0,-1)
-                            fetch(raw_image, sampler, (float2){x_coord.x, center.y}),   // (-1, 0)
-                            fetch(raw_image, sampler, (float2){x_coord.y, center.y})};  // (-2, 0)
+    float4 value = (float4){fetch(raw_image, (float2){center.x, y_coord.x}),   // ( 0,-2)
+                            fetch(raw_image, (float2){center.x, y_coord.y}),   // ( 0,-1)
+                            fetch(raw_image, (float2){x_coord.x, center.y}),   // (-1, 0)
+                            fetch(raw_image, (float2){x_coord.y, center.y})};  // (-2, 0)
 
-    float4 temp = (float4){fetch(raw_image, sampler, (float2){center.x, y_coord.w}),   // ( 0, 2)
-                           fetch(raw_image, sampler, (float2){center.x, y_coord.z}),   // ( 0, 1)
-                           fetch(raw_image, sampler, (float2){x_coord.w, center.y}),   // ( 2, 0)
-                           fetch(raw_image, sampler, (float2){x_coord.z, center.y})};  // ( 1, 0)
+    float4 temp = (float4){fetch(raw_image, (float2){center.x, y_coord.w}),   // ( 0, 2)
+                           fetch(raw_image, (float2){center.x, y_coord.z}),   // ( 0, 1)
+                           fetch(raw_image, (float2){x_coord.w, center.y}),   // ( 2, 0)
+                           fetch(raw_image, (float2){x_coord.z, center.y})};  // ( 1, 0)
 
     // Even the simplest compilers should be able to constant-fold these to avoid the division.
     // Note that on scalar processors these constants force computation of some identical products twice.
@@ -133,37 +131,39 @@ float4 bayerToRGB(read_only image2d_t raw_image, sampler_t sampler, float2 coord
     return result;
 }
 
+// The following kernels are designed to debayer an entire image
+// To utilise them use clEnqueueNDRangeKernel and specify
+//     work_dim = 2
+//     global_work_size = {image.width, image.height}
+// https://www.khronos.org/registry/OpenCL/sdk/1.2/docs/man/xhtml/clEnqueueNDRangeKernel.html
+//
+// Use a input cl_image_format of {CL_R, CL_UNORM_INT8} and a output cl_image_format of {CL_RGBA, CL_UNORM_INT8}
+//
+// Input and output image dimensions should be identical
+kernel void debayer_GRBG(read_only image2d_t input, write_only image2d_t output) {
+    const float2 pos = {(float) (get_global_id(0)), (float) (get_global_id(1))};
 
-float4 read_image(read_only image2d_t image, const enum FOURCC format, const float2 coordinates) {
-    switch (format) {
-        case GRBG: {
-            return bayerToRGB(image, bayer_sampler, coordinates, (float2)(1.0, 0.0));
-        }
-        case RGGB: {
-            return bayerToRGB(image, bayer_sampler, coordinates, (float2)(0.0, 0.0));
-        }
-        case GBRG: {
-            return bayerToRGB(image, bayer_sampler, coordinates, (float2)(0.0, 1.0));
-        }
-        case BGGR: {
-            return bayerToRGB(image, bayer_sampler, coordinates, (float2)(1.0, 1.0));
-        }
-        case RGB3:
-        case BGRA:
-        case RGBA: {
-            return read_imagef(image, interp_sampler, coordinates);
-        }
-        default: { return (float4)(0); }
-    }
+    // convert into RGBA colour
+    write_imagef(output, (int2){pos.x, pos.y}, bayerToRGB(input, pos, (float2){1.0, 0.0}));
 }
 
-kernel void read_image_to_network(read_only image2d_t image,
-                                  const enum FOURCC format,
-                                  global float2* coordinates,
-                                  global float4* network) {
+kernel void debayer_RGGB(read_only image2d_t input, write_only image2d_t output) {
+    const float2 pos = {(float) (get_global_id(0)), (float) (get_global_id(1))};
 
-    const int idx = get_global_id(0);
+    // convert into RGBA colour
+    write_imagef(output, (int2){pos.x, pos.y}, bayerToRGB(input, pos, (float2){0.0, 0.0}));
+}
 
-    // Read our pixel coordinate into the image
-    network[idx] = read_image(image, format, coordinates[idx]);
+kernel void debayer_GBRG(read_only image2d_t input, write_only image2d_t output) {
+    const float2 pos = {(float) (get_global_id(0)), (float) (get_global_id(1))};
+
+    // convert into RGBA colour
+    write_imagef(output, (int2){pos.x, pos.y}, bayerToRGB(input, pos, (float2){0.0, 1.0}));
+}
+
+kernel void debayer_BGGR(read_only image2d_t input, write_only image2d_t output) {
+    const float2 pos = {(float) (get_global_id(0)), (float) (get_global_id(1))};
+
+    // convert into RGBA colour
+    write_imagef(output, (int2){pos.x, pos.y}, bayerToRGB(input, pos, (float2){1.0, 1.0}));
 }
