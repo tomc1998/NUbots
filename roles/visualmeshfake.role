@@ -10,12 +10,12 @@ NUCLEAR_ROLE(
     #Support
     support::configuration::NetworkConfiguration
     support::NUsight
-    #support::VirtualCamera
+    support::VirtualCamera
     support::configuration::SoccerConfig
 
     #Sensors
-    input::Camera
-    platform::darwin::HardwareIO
+    #input::Camera
+    platform::darwin::HardwareSimulator
     platform::darwin::SensorFilter
 
     #Vision
