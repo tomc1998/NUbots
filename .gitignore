@@ -75,3 +75,4 @@ tags
 .idea
 *.sublime-workspace
 
+\.vscode/ipch/
