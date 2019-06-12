@@ -205,6 +205,9 @@ namespace vision {
         YUYV    = 0x56595559,
         YM24    = 0x34324d59,
         RGB3    = 0x33424752,
+        RGBA    = 0x41424752,
+        BGR3    = 0x33524742,
+        BGRA    = 0x41524742,
         JPEG    = 0x4745504a,
         UNKNOWN = 0
     };
