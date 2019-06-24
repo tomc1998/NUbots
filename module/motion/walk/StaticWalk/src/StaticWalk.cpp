@@ -71,6 +71,7 @@ namespace motion {
             Eigen::Affine3d Htg;
             Htg.linear()      = Rtg;
             Htg.translation() = Hts.translation();
+            Htg               = Hts;
             return Htg;
         }
 
@@ -131,7 +132,7 @@ namespace motion {
                     start_phase = NUClear::clock::now();
                     // Change the state of the walk based on what the previous state was
                     switch (state) {
-                        case LEFT_LEAN: state = LEFT_LEAN; break;
+                        case LEFT_LEAN: state = RIGHT_STEP; break;
                         case RIGHT_STEP: {
                             // Store where support is relative to swing
                             // log("rightstep");
@@ -152,7 +153,7 @@ namespace motion {
 
                             state = RIGHT_LEAN;
                         } break;
-                        case RIGHT_LEAN: state = RIGHT_LEAN; break;
+                        case RIGHT_LEAN: state = LEFT_STEP; break;
                         case LEFT_STEP: {
                             // Store where support is relative to swing
                             // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()
