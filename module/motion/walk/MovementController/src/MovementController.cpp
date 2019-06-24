@@ -93,7 +93,9 @@ namespace motion {
             Hgn.linear()        = Ht_ng.rotation().inverse();
             Hgn.translation()   = rNGg;
             Ht_ng.translation() = Hgn.inverse().translation();
-
+            Ht_ng.linear()      = Eigen::Quaterniond(Htg.rotation())
+                                 .slerp(factor, Eigen::Quaterniond(Ht_tg.rotation()))
+                                 .toRotationMatrix();
 
             bool ridiculous_rotation =
                 (Eigen::Matrix3d::Identity() - Htg.rotation() * Ht_ong.rotation().inverse()).norm() > rotation_limit;
@@ -105,15 +107,15 @@ namespace motion {
                 double old_ratchet_rotation =
                     (Eigen::Matrix3d::Identity() - Ht_ong.rotation() * Ht_tg.rotation().transpose()).norm();
                 if (old_ratchet_rotation < new_ratchet_rotation) {
-                    log("ROTATION RATCHET");
+                    // log("ROTATION RATCHET");
                     Ht_ng.linear() = Ht_ong.linear();
                 }
                 else {
-                    log("ROTATION SUCCESS!");
+                    // log("ROTATION SUCCESS!");
                 }
             }
             else {
-                log("RIDICULOUS ROTATION (or not flag");
+                // log("RIDICULOUS ROTATION (or not flag");
             }
 
             bool ridiculous = (Htg.inverse().translation() - Ht_ong.inverse().translation()).norm() > velocity_limit;
@@ -122,15 +124,15 @@ namespace motion {
                 double old_distance = (Ht_ong.inverse().translation() - Ht_tg.inverse().translation()).norm();
                 double new_distance = (Ht_ng.inverse().translation() - Ht_tg.inverse().translation()).norm();
                 if (old_distance < new_distance) {
-                    log("TRANSLATION RATCHET");
+                    // log("TRANSLATION RATCHET");
                     Ht_ng.translation() = Ht_ong.translation();
                 }
                 else {
-                    log("TRANSLATION SUCCESS!");
+                    // log("TRANSLATION SUCCESS!");
                 }
             }
             else {
-                log("RIDICULOUS TRANSLATION (or not flag) ");
+                // log("RIDICULOUS TRANSLATION (or not flag) ");
             }
 
             Ht_ong     = Ht_ng;
@@ -163,6 +165,9 @@ namespace motion {
             Eigen::Vector3d rWGg   = Hwg.inverse().translation();
             Eigen::Vector3d rW_tGg = Hw_tg.inverse().translation();
             Eigen::Affine3d Htw    = Htg * Hwg.inverse();
+
+            double factor = time_horizon / time_left;
+
 
             // //*************A METHOD********************************
 
@@ -286,19 +291,16 @@ namespace motion {
             }
 
             // Set the translation of the matrix to the correct vector
+            Hw_ng.linear() =
+                Eigen::Quaterniond(Hwg.linear()).slerp(factor, Eigen::Quaterniond(Hw_tg.linear())).toRotationMatrix();
+
             Eigen::Affine3d Hgn;
+            Hgn.linear()        = Hw_ng.linear().transpose();
             Hgn.translation()   = rNGg;
-            Hgn.linear()        = Eigen::Matrix3d::Identity();
             Hw_ng.translation() = Hgn.inverse().translation();
 
-            // Hw_ng.translation() = Hw_tg.translation();
-            // log("target: ", rW_tGg.transpose());
-            Hw_ng.linear() = Eigen::Matrix3d::Identity();
-
-            double factor = time_horizon / time_left;
-            // Hw_ng.linear() =
-            //     Eigen::Quaterniond(Hwg.linear()).slerp(factor,
-            //     Eigen::Quaterniond(Hw_tg.linear())).toRotationMatrix();
+            Hw_ng.linear() =
+                Eigen::Quaterniond(Hwg.linear()).slerp(factor, Eigen::Quaterniond(Hw_tg.linear())).toRotationMatrix();
 
             return Hw_ng;
         }
@@ -365,34 +367,50 @@ namespace motion {
                                               ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL])
                                               : Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
 
-                    log(torso_time_left);
                     //---------------------------------------------------------------------------------------------
                     //----------------------- CREATE GROUND SPACE -------------------------------------------------
                     //---------------------------------------------------------------------------------------------
 
-                    // Retrieve rotations needed for creating the space
-                    // support foot to torso rotation, and world to torso rotation
-                    Eigen::Matrix3d Rts     = Hts.rotation();
+                    // // Retrieve rotations needed for creating the space
+                    // // support foot to torso rotation, and world to torso rotation
+                    // Eigen::Matrix3d Rts     = Hts.rotation();
                     Eigen::Matrix3d Rtworld = (Eigen::Affine3d(sensors.Htw)).rotation();
 
-                    // World to support foot
-                    Eigen::Matrix3d Rsworld = Rts.transpose() * Rtworld;
+                    // // World to support foot
+                    // Eigen::Matrix3d Rsworld = Rts.transpose() * Rtworld;
 
-                    // Dot product of z with identity z
-                    double alpha = std::acos(Rsworld(2, 2));
+                    // // Dot product of z with identity z
+                    // double alpha = std::acos(Rsworld(2, 2));
 
-                    Eigen::Vector3d axis = Eigen::Vector3d::UnitZ().cross(Rsworld.col(2)).normalized();
+                    // Eigen::Vector3d axis = Rsworld.col(2).cross(Eigen::Vector3d::UnitZ()).normalized();
 
-                    // Axis angle is ground to support foot
-                    Eigen::Matrix3d Rsg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix();
-                    Eigen::Matrix3d Rtg = Rts * Rsg;
+                    // // Axis angle is ground to support foot
+                    // Eigen::Matrix3d Rgs = Eigen::AngleAxisd(alpha, axis).toRotationMatrix();
+                    // Eigen::Matrix3d Rtg = Rts * Rgs.inverse();
 
-                    // Ground space assemble!
-                    Eigen::Affine3d Htg;
+                    // // Ground space assemble!
+                    // Eigen::Affine3d Htg;
 
-                    Htg.linear()      = Rtg;
-                    Htg.translation() = Hts.translation();
+                    // Htg.linear()      = Rtg;
+                    // Htg.translation() = Hts.translation();
 
+                    // log(((Htg * Eigen::Vector3d::UnitZ()) - ((Eigen::Affine3d(sensors.Htw)) *
+                    // Eigen::Vector3d::UnitZ()))
+                    //         .transpose());
+                    Eigen::Affine3d Htg(Hts);
+
+                    Eigen::Vector3d SFZ = Hts.rotation().transpose().col(2);
+                    Eigen::Vector3d WZ  = Rtworld.transpose().col(2);
+
+                    Eigen::Vector3d p = SFZ.cross(WZ).normalized();
+                    double alpha      = SFZ.dot(WZ);
+
+                    Htg.rotate(Eigen::AngleAxisd(alpha, p).inverse());
+
+                    log(((Htg * Eigen::Vector3d::UnitZ()) - ((Eigen::Affine3d(sensors.Htw)) * Eigen::Vector3d::UnitZ()))
+                            .transpose());
+
+                    return;
 
                     //---------------------------------------------------------------------------------------------
                     //---------------------------------------------------------------------------------------------
@@ -462,7 +480,6 @@ namespace motion {
                     }
 
                     for (const auto& joint : right_joints) {
-
                         waypoints->emplace_back(foot_target.subsumption_id,
                                                 target_time,
                                                 joint.first,
@@ -472,7 +489,6 @@ namespace motion {
                     }
 
                     for (const auto& joint : left_joints) {
-
                         waypoints->emplace_back(foot_target.subsumption_id,
                                                 target_time,
                                                 joint.first,

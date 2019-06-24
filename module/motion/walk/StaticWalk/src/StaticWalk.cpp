@@ -195,10 +195,6 @@ namespace motion {
 
                         rT_tGg = rT_tGg - (rCGg - Htg.inverse().translation());
 
-                        // rT_tGg.y() = rT_tGg.y() > y_limit ? y_limit : rT_tGg.y();
-
-                        // log("HTG", Htg.matrix());
-
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
                         Hgt_t.translation() = rT_tGg;
@@ -228,10 +224,6 @@ namespace motion {
                         rT_tGg = rT_tGg - (rCGg - Htg.inverse().translation());
 
                         // rT_tGg.y() = rT_tGg.y() > y_limit ? y_limit : rT_tGg.y();
-
-                        // log("COM", rCTt.transpose());
-                        // log("zero", (rCGg - Htg.inverse().translation()));
-                        // log("torsotarget", (Htg * rT_tGg).transpose());
 
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
@@ -299,7 +291,7 @@ namespace motion {
                         // Move the right foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(
                             start_phase + phase_time, true, Haf.matrix(), true, subsumptionId, w_gain));
-                        // log("rightstep");
+                        log("rightstep");
                     } break;
 
 
@@ -352,7 +344,7 @@ namespace motion {
                         // Move the left foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(
                             start_phase + phase_time, false, Haf.matrix(), true, subsumptionId, w_gain));
-                        // log("leftstep");
+                        log("leftstep");
                     } break;
                     default: break;
                 }
