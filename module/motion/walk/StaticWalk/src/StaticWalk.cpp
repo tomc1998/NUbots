@@ -56,22 +56,45 @@ namespace motion {
             Eigen::Matrix3d Rts     = Hts.rotation();
             Eigen::Matrix3d Rtworld = Htworld.rotation();
 
-            // World to support foot
-            Eigen::Matrix3d Rsworld = Rts.transpose() * Rtworld;
+            Eigen::Vector3d SFZ = Hts.rotation().col(2);
+            Eigen::Vector3d WZ  = Rtworld.col(2);
 
-            // Dot product of z with identity z
-            double alpha         = std::acos(Rsworld(2, 2));
-            Eigen::Vector3d axis = Eigen::Vector3d::UnitZ().cross(Rsworld.col(2)).normalized();
+            double alpha      = std::acos(SFZ.dot(WZ));
+            Eigen::Vector3d p = SFZ.cross(WZ).normalized();
 
-            // Axis angle is ground to support foot
-            Eigen::Matrix3d Rsg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix();
-            Eigen::Matrix3d Rtg = Rts * Rsg;
+            Eigen::Matrix3d R_x;
+            R_x.row(0) = Eigen::Vector3d(1, 0, 0);
+            R_x.row(1) = Eigen::Vector3d(0, std::cos(alpha), -std::sin(alpha));
+            R_x.row(2) = Eigen::Vector3d(0, std::sin(alpha), std::cos(alpha));
 
-            // Ground space assemble!
+            Eigen::Vector3d p_abs(std::abs(p.x()), std::abs(p.y()), std::abs(p.z()));
+
+            Eigen::Vector3d s;
+            if ((p_abs.x() < p_abs.y()) && (p_abs.x() < p_abs.z())) {
+                s = Eigen::Vector3d(0, -p.z(), p.y());
+            }
+            else if ((p_abs.y() < p_abs.x()) && (p_abs.y() < p_abs.z())) {
+                s = Eigen::Vector3d(-p.z(), 0, p.x());
+            }
+            else {
+                s = Eigen::Vector3d(-p.y(), p.x(), 0);
+            }
+
+            s = s.normalized();
+
+            Eigen::Vector3d t = p.cross(s);
+
+            Eigen::Matrix3d M;
+            M.row(0) = p;
+            M.row(1) = s;
+            M.row(2) = t;
+
+            Eigen::Matrix3d X   = M.transpose() * R_x * M;
+            Eigen::Matrix3d Rtg = X * Hts.rotation();
+
             Eigen::Affine3d Htg;
             Htg.linear()      = Rtg;
             Htg.translation() = Hts.translation();
-            Htg               = Hts;
             return Htg;
         }
 
@@ -99,6 +122,8 @@ namespace motion {
                 y_offset = config["y_offset"].as<double>();
                 x_offset = config["x_offset"].as<double>();
 
+                start_right_lean = config["start_right_lean"].as<bool>();
+
                 rotation_limit = 15 * M_PI / 180;
 
                 // Multiply by 2 so that the lean states are accounted for
@@ -113,8 +138,9 @@ namespace motion {
                 if (state == INITIAL) {
                     // Set the matrix Hff_s and change the state to a lean
 
-                    state = RIGHT_LEAN;
 
+                    state = start_right_lean ? RIGHT_LEAN : LEFT_LEAN;
+                    log(state);
                     Eigen::Affine3d Hts = state == LEFT_LEAN
                                               ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL])
                                               : Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
@@ -132,7 +158,7 @@ namespace motion {
                     start_phase = NUClear::clock::now();
                     // Change the state of the walk based on what the previous state was
                     switch (state) {
-                        case LEFT_LEAN: state = RIGHT_STEP; break;
+                        case LEFT_LEAN: state = LEFT_LEAN; break;
                         case RIGHT_STEP: {
                             // Store where support is relative to swing
                             // log("rightstep");
@@ -153,7 +179,7 @@ namespace motion {
 
                             state = RIGHT_LEAN;
                         } break;
-                        case RIGHT_LEAN: state = LEFT_STEP; break;
+                        case RIGHT_LEAN: state = RIGHT_LEAN; break;
                         case LEFT_STEP: {
                             // Store where support is relative to swing
                             // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()

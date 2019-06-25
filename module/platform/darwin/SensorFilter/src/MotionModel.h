@@ -71,7 +71,6 @@ namespace platform {
             struct MeasurementType {
                 struct GYROSCOPE {};
                 struct ACCELEROMETER {};
-                struct FOOT_UP_WITH_Z {};
                 struct FLAT_FOOT_ODOMETRY {};
                 struct FLAT_FOOT_ORIENTATION {};
             };
@@ -82,8 +81,6 @@ namespace platform {
 
             arma::vec3 predictedObservation(const arma::vec::fixed<size>& state, const MeasurementType::ACCELEROMETER&);
             arma::vec3 predictedObservation(const arma::vec::fixed<size>& state, const MeasurementType::GYROSCOPE&);
-            arma::vec4 predictedObservation(const arma::vec::fixed<size>& state,
-                                            const MeasurementType::FOOT_UP_WITH_Z&);
             arma::vec3 predictedObservation(const arma::vec::fixed<size>& state,
                                             const MeasurementType::FLAT_FOOT_ODOMETRY&);
             arma::vec4 predictedObservation(const arma::vec::fixed<size>& state,

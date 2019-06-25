@@ -84,24 +84,6 @@ namespace platform {
             return state.rows(WX, WZ) + state.rows(BX, BZ);
         }
 
-        // Foot up with z
-        arma::vec4 MotionModel::predictedObservation(const arma::vec::fixed<size>& state,
-                                                     const MeasurementType::FOOT_UP_WITH_Z&) {
-
-            arma::vec4 prediction;
-
-            // Extract our rotation quaternion
-            UnitQuaternion rotation(state.rows(QW, QZ));
-
-            // First 3 is the up vector in torso space
-            prediction.rows(0, 2) = rotation.rotateVector(arma::vec3({0, 0, 1}));
-
-            // 4th component is our z height
-            prediction[3] = state[PZ];
-
-            return prediction;
-        }
-
         arma::vec3 MotionModel::predictedObservation(const arma::vec::fixed<size>& state,
                                                      const MeasurementType::FLAT_FOOT_ODOMETRY&) {
 

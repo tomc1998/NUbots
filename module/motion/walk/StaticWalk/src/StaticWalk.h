@@ -27,6 +27,7 @@ namespace motion {
             double torso_height;
             // The width of the robots stance as it walks (m)
             double stance_width;
+            bool start_right_lean;
             double wl_gain;
             double l_gain;
             double w_gain;

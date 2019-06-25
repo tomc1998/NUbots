@@ -503,7 +503,7 @@ namespace platform {
                         MotionModel::MeasurementType::ACCELEROMETER());
 
                     // Gyroscope measurement update
-                    motionFilter.measurementUpdate(convert<double, 3>(sensors->gyroscope),
+                    motionFilter.measurementUpdate(convert<double, 3>(-sensors->gyroscope),
                                                    config.motionFilter.noise.measurement.gyroscope,
                                                    MotionModel::MeasurementType::GYROSCOPE());
 
@@ -568,21 +568,21 @@ namespace platform {
                                         Rtw_new *= -1;
                                     }
 
-                                    // // do a foot based orientation update
-                                    // motionFilter.measurementUpdate(
-                                    //     Rtw_new,
-                                    //     config.motionFilter.noise.measurement.flatFootOrientation,
-                                    //     MotionModel::MeasurementType::FLAT_FOOT_ORIENTATION());
+                                    // do a foot based orientation update
+                                    motionFilter.measurementUpdate(
+                                        Rtw_new,
+                                        config.motionFilter.noise.measurement.flatFootOrientation,
+                                        MotionModel::MeasurementType::FLAT_FOOT_ORIENTATION());
 
                                     // calculate the old -> new world foot position updates
                                     arma::vec3 rFWw = footlanding_Rwf[side] * rTFf - footlanding_rFWw[side];
 
 
-                                    // // do a foot based position update
-                                    // motionFilter.measurementUpdate(
-                                    //     rFWw,
-                                    //     config.motionFilter.noise.measurement.flatFootOdometry,
-                                    //     MotionModel::MeasurementType::FLAT_FOOT_ODOMETRY());
+                                    // do a foot based position update
+                                    motionFilter.measurementUpdate(
+                                        rFWw,
+                                        config.motionFilter.noise.measurement.flatFootOdometry,
+                                        MotionModel::MeasurementType::FLAT_FOOT_ODOMETRY());
                                 }
                             }
                         }

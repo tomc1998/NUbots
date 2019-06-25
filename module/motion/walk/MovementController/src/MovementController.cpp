@@ -86,16 +86,18 @@ namespace motion {
             double factor = time_horizon / time_left;
 
             // // Slerp the current rotation and target rotation to get a next rotation
-            Ht_ng.linear() = Eigen::Quaterniond(Htg.rotation())
-                                 .slerp(factor, Eigen::Quaterniond(Ht_tg.rotation()))
-                                 .toRotationMatrix();
+            // Ht_ng.linear() = Eigen::Quaterniond(Htg.rotation())
+            //                      .slerp(factor, Eigen::Quaterniond(Ht_tg.rotation()))
+            //                      .toRotationMatrix();
+            Ht_ng.linear() = Ht_tg.rotation();
             Eigen::Affine3d Hgn;
-            Hgn.linear()        = Ht_ng.rotation().inverse();
+            Hgn.linear()        = Ht_tg.rotation().inverse();
             Hgn.translation()   = rNGg;
             Ht_ng.translation() = Hgn.inverse().translation();
-            Ht_ng.linear()      = Eigen::Quaterniond(Htg.rotation())
-                                 .slerp(factor, Eigen::Quaterniond(Ht_tg.rotation()))
-                                 .toRotationMatrix();
+            // Ht_ng.linear()      = Eigen::Quaterniond(Htg.rotation())
+            //                      .slerp(factor, Eigen::Quaterniond(Ht_tg.rotation()))
+            //                      .toRotationMatrix();
+            Ht_ng.linear() = Ht_tg.rotation();
 
             bool ridiculous_rotation =
                 (Eigen::Matrix3d::Identity() - Htg.rotation() * Ht_ong.rotation().inverse()).norm() > rotation_limit;
@@ -123,8 +125,12 @@ namespace motion {
             if (Htong_flag && !ridiculous) {
                 double old_distance = (Ht_ong.inverse().translation() - Ht_tg.inverse().translation()).norm();
                 double new_distance = (Ht_ng.inverse().translation() - Ht_tg.inverse().translation()).norm();
+
+                // log("old_distance", old_distance);
+                // log("new_distance", new_distance);
+
                 if (old_distance < new_distance) {
-                    // log("TRANSLATION RATCHET");
+                    // log("TRANSLATION RATCHET", "\nold_distance", old_distance, "\nnew_distance", new_distance);
                     Ht_ng.translation() = Ht_ong.translation();
                 }
                 else {
@@ -376,45 +382,63 @@ namespace motion {
                     // Eigen::Matrix3d Rts     = Hts.rotation();
                     Eigen::Matrix3d Rtworld = (Eigen::Affine3d(sensors.Htw)).rotation();
 
-                    // // World to support foot
-                    // Eigen::Matrix3d Rsworld = Rts.transpose() * Rtworld;
+                    Eigen::Vector3d SFZ = Hts.rotation().col(2);
+                    Eigen::Vector3d WZ  = Rtworld.col(2);
 
-                    // // Dot product of z with identity z
-                    // double alpha = std::acos(Rsworld(2, 2));
-
-                    // Eigen::Vector3d axis = Rsworld.col(2).cross(Eigen::Vector3d::UnitZ()).normalized();
-
-                    // // Axis angle is ground to support foot
-                    // Eigen::Matrix3d Rgs = Eigen::AngleAxisd(alpha, axis).toRotationMatrix();
-                    // Eigen::Matrix3d Rtg = Rts * Rgs.inverse();
-
-                    // // Ground space assemble!
-                    // Eigen::Affine3d Htg;
-
-                    // Htg.linear()      = Rtg;
-                    // Htg.translation() = Hts.translation();
-
-                    // log(((Htg * Eigen::Vector3d::UnitZ()) - ((Eigen::Affine3d(sensors.Htw)) *
-                    // Eigen::Vector3d::UnitZ()))
-                    //         .transpose());
-                    Eigen::Affine3d Htg(Hts);
-
-                    Eigen::Vector3d SFZ = Hts.rotation().transpose().col(2);
-                    Eigen::Vector3d WZ  = Rtworld.transpose().col(2);
-
+                    double alpha      = std::acos(SFZ.dot(WZ));
                     Eigen::Vector3d p = SFZ.cross(WZ).normalized();
-                    double alpha      = SFZ.dot(WZ);
 
-                    Htg.rotate(Eigen::AngleAxisd(alpha, p).inverse());
+                    Eigen::Matrix3d R_x;
+                    R_x.row(0) = Eigen::Vector3d(1, 0, 0);
+                    R_x.row(1) = Eigen::Vector3d(0, std::cos(alpha), -std::sin(alpha));
+                    R_x.row(2) = Eigen::Vector3d(0, std::sin(alpha), std::cos(alpha));
 
-                    log(((Htg * Eigen::Vector3d::UnitZ()) - ((Eigen::Affine3d(sensors.Htw)) * Eigen::Vector3d::UnitZ()))
-                            .transpose());
+                    Eigen::Vector3d p_abs(std::abs(p.x()), std::abs(p.y()), std::abs(p.z()));
 
-                    Htg = Hts;
-                    // return;
+                    Eigen::Vector3d s;
+
+                    if ((p_abs.x() <= p_abs.y()) && (p_abs.x() <= p_abs.z())) {
+                        s = Eigen::Vector3d(0, -p.z(), p.y());
+                    }
+                    else if ((p_abs.y() <= p_abs.x()) && (p_abs.y() <= p_abs.z())) {
+                        s = Eigen::Vector3d(-p.z(), 0, p.x());
+                    }
+                    else {
+                        s = Eigen::Vector3d(-p.y(), p.x(), 0);
+                    }
+
+
+                    s = s.normalized();
+
+                    Eigen::Vector3d t = p.cross(s).normalized();
+
+                    Eigen::Matrix3d M;
+                    M.row(0) = p;
+                    M.row(1) = s;
+                    M.row(2) = t;
+
+                    Eigen::Matrix3d X   = M.transpose() * R_x * M;
+                    Eigen::Matrix3d Rtg = X * Hts.rotation();
+
+                    // log("\nX:\n",
+                    //     X.matrix(),
+                    //     "\n\nRtg:\n",
+                    //     Rtg.matrix(),
+                    //     "\n\nHtworld:\n",
+                    //     sensors.Htw,
+                    //     "\n\nHts:\n",
+                    //     Hts.matrix(),
+                    // log("Check!:",
+                    //    ((Rtg * Eigen::Vector3d::UnitZ()) - (Rtworld * Eigen::Vector3d::UnitZ())).transpose());
+
+                    Eigen::Affine3d Htg;
+                    Htg.linear()      = Rtg;
+                    Htg.translation() = Hts.translation();
 
                     //---------------------------------------------------------------------------------------------
                     //---------------------------------------------------------------------------------------------
+
+                    // log("world to torso z:", Rtworld.col(2).transpose());
 
                     // Calculate the next torso and next swing foot positions we are targeting
                     Eigen::Affine3d Ht_ng = next_torso(torso_time_left, Htg, Ht_tg);

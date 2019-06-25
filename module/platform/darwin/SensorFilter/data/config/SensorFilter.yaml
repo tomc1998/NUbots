@@ -78,4 +78,4 @@ motion_filter:
       velocity: [1e-3, 1e-3, 1e-3]    # We are unsure of our velocity
       rotation: [0.1, 0.1, 0.1, 0.1]  # Not very sure of rotation
       rotational_velocity: [0.1, 0.1, 0.1]  # Fairly unsure about our rotational velocity
-      gyroscope_bias: [1, 1, 1] # Very unsure about our gyroscope bias
+      gyroscope_bias: [1e-10, 1e-10, 1e-10] # Don't put rotation into gyroscope bias on startup
