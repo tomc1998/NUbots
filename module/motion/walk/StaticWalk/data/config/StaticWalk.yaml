@@ -13,10 +13,7 @@ x_speed: 0.02
 # x_speed: 0.03
 y_speed: 0
 angle: 0
-
-wl_gain: 5
-l_gain: 20
-w_gain: 10
+start_right_lean: true
 
 y_limit: 0.04
 

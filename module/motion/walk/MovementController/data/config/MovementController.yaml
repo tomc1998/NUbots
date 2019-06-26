@@ -1,16 +1,22 @@
-# Height that the robot lifts its foot to step
-step_height: 0.03
-# How steep the foot comes down to its target
-step_steep: 2
-# Size of the well near the target
-# Well_width must be an even number
-well_width: 0.005
+foot:
+  # Height that the robot lifts its foot to step
+  step_height: 0.03
+  # How steep the foot comes down to its target
+  step_steep: 2
+  # Size of the well near the target
+  # Well_width must be an even number
+  well_width: 0.005
 
-gain: 15
-s_gain: 22
+torso:
+  # The largest rotation allowed in a single horizon before snapping the ratchet
+  max_rotation: 10 * pi / 180
+  # The largest translation allowed in a single horizon before snapping the ratchet
+  max_translation: 0.10
+
+# Gain for the support and swing legs
+support_gain: 15
+swing_gain: 15
 
 # How far in the future we are sending the movements (seconds)
 time_horizon: 0.05
 
-velocity_limit: 0.02
-rotation_limit: 0.1

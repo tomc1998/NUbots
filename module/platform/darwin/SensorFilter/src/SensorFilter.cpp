@@ -111,6 +111,8 @@ namespace platform {
             , footlanding_Rwf()
             , theta(arma::fill::zeros) {
 
+            log_level = NUClear::FATAL;
+
             on<Configuration>("SensorFilter.yaml").then([this](const Configuration& config) {
                 this->config.nominal_z = config["nominal_z"].as<float>();
 
