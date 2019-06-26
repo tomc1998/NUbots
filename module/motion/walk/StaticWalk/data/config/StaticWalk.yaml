@@ -9,13 +9,14 @@ torso_height: 0.45
 # stance_width: 0.074
 stance_width: 0.15
 # values for walkcommand (test)
-x_speed: 0.02
-# x_speed: 0.03
-y_speed: 0
-angle: 0
-start_right_lean: true
-
-y_limit: 0.04
+test:
+  x_speed: 0.02
+  # x_speed: 0.03
+  y_speed: 0
+  angle: 0
+  start_right_lean: true
 
 x_offset: 0.02
 y_offset: -0.02
+
+rotation_limit: 15 * pi / 180

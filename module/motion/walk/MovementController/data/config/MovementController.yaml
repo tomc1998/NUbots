@@ -20,3 +20,9 @@ swing_gain: 15
 # How far in the future we are sending the movements (seconds)
 time_horizon: 0.05
 
+projection_angle: 10 * pi / 180
+
+min_rotation: pi / 180
+
+
+

@@ -37,6 +37,8 @@ namespace motion {
                                .toRotationMatrix()
                                .transpose();
 
+            return Hgn.inverse();
+
             // NUClear::log("next target translation:\n",
             //              Htg.inverse().translation().transpose(),
             //              "\n",

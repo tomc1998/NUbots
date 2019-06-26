@@ -28,10 +28,6 @@ namespace motion {
             // The width of the robots stance as it walks (m)
             double stance_width;
             bool start_right_lean;
-            double wl_gain;
-            double l_gain;
-            double w_gain;
-            double y_limit;
             double y_offset;
             double x_offset;
             double time;

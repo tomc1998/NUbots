@@ -21,6 +21,8 @@ namespace motion {
                 double time_horizon;
                 double support_gain;
                 double swing_gain;
+                double projection_angle;
+                double min_rotation;
             } config;
         };
     }  // namespace walk

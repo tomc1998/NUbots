@@ -28,6 +28,8 @@
 #include "utility/math/matrix/Transform3D.h"
 #include "utility/motion/InverseKinematics.h"
 #include "utility/nusight/NUhelpers.h"
+#include "utility/support/yaml_expression.h"
+
 
 namespace module {
 namespace motion {
@@ -42,6 +44,7 @@ namespace motion {
         using utility::input::LimbID;
         using utility::input::ServoID;
         using utility::math::matrix::Transform3D;
+        using utility::support::Expression;
 
         using message::behaviour::ServoCommand;
         using message::input::Sensors;
@@ -85,19 +88,19 @@ namespace motion {
                 state       = INITIAL;
 
                 // Use configuration here from file StaticWalk.yaml
-                torso_height   = config["torso_height"].as<double>();
-                stance_width   = config["stance_width"].as<double>();
-                phase_time     = std::chrono::milliseconds(config["phase_time"].as<int>());
-                double x_speed = config["x_speed"].as<double>();
-                double y_speed = config["y_speed"].as<double>();
-                double angle   = config["angle"].as<double>();
+                torso_height = config["torso_height"].as<double>();
+                stance_width = config["stance_width"].as<double>();
+                phase_time   = std::chrono::milliseconds(config["phase_time"].as<int>());
+
+                double x_speed   = config["test"]["x_speed"].as<double>();
+                double y_speed   = config["test"]["y_speed"].as<double>();
+                double angle     = config["test"]["angle"].as<double>();
+                start_right_lean = config["test"]["start_right_lean"].as<bool>();
 
                 y_offset = config["y_offset"].as<double>();
                 x_offset = config["x_offset"].as<double>();
 
-                start_right_lean = config["start_right_lean"].as<bool>();
-
-                rotation_limit = 15 * M_PI / 180;
+                rotation_limit = config["rotation_limit"].as<Expression>();
 
                 // Multiply by 2 so that the lean states are accounted for
                 time = std::chrono::duration_cast<std::chrono::duration<double>>(phase_time).count() * 2;
@@ -133,7 +136,7 @@ namespace motion {
                     start_phase = NUClear::clock::now();
                     // Change the state of the walk based on what the previous state was
                     switch (state) {
-                        case LEFT_LEAN: state = RIGHT_STEP; break;
+                        case LEFT_LEAN: state = LEFT_LEAN; break;
                         case RIGHT_STEP: {
                             // Store where support is relative to swing
                             // log("rightstep");
@@ -154,7 +157,7 @@ namespace motion {
 
                             state = RIGHT_LEAN;
                         } break;
-                        case RIGHT_LEAN: state = LEFT_STEP; break;
+                        case RIGHT_LEAN: state = RIGHT_LEAN; break;
                         case LEFT_STEP: {
                             // Store where support is relative to swing
                             // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()
@@ -200,7 +203,7 @@ namespace motion {
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
                         Hgt_t.translation() = rT_tGg;
-                        // Hgt_t.translation() = Eigen::Vector3d(0, 0, 0.45);
+                        Hgt_t.translation() = Eigen::Vector3d(0, 0, 0.45);
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 
@@ -231,7 +234,7 @@ namespace motion {
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
                         Hgt_t.translation() = rT_tGg;
-                        // Hgt_t.translation() = Eigen::Vector3d(0, 0, 0.45);
+                        Hgt_t.translation() = Eigen::Vector3d(0, 0, 0.45);
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 

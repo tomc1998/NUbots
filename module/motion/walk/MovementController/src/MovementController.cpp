@@ -58,10 +58,13 @@ namespace motion {
                 torso_controller.config.max_translation = cfg["torso"]["max_translation"].as<Expression>();
                 torso_controller.config.max_rotation    = cfg["torso"]["max_rotation"].as<Expression>();
 
+
                 // Motion controller config
-                config.time_horizon = cfg["time_horizon"].as<Expression>();
-                config.support_gain = cfg["support_gain"].as<Expression>();
-                config.swing_gain   = cfg["swing_gain"].as<Expression>();
+                config.time_horizon     = cfg["time_horizon"].as<Expression>();
+                config.support_gain     = cfg["support_gain"].as<Expression>();
+                config.swing_gain       = cfg["swing_gain"].as<Expression>();
+                config.projection_angle = cfg["projection_angle"].as<Expression>();
+                config.min_rotation     = cfg["min_rotation"].as<Expression>();
             });
 
 
@@ -166,51 +169,48 @@ namespace motion {
                     const Transform3D& left_foot  = torso_target.is_right_foot_support ? t_w : t_t;
                     const Transform3D& right_foot = torso_target.is_right_foot_support ? t_t : t_w;
 
-                    // Retrieve joint positions from inverse kinematics
+                    // Look through each servo
+                    auto waypoints = std::make_unique<std::vector<ServoCommand>>();
+                    for (const auto& joint : calculateLegJoints(model, left_foot, right_foot)) {
 
+                        LimbID limb           = LimbID::limbForServo(joint.first);
+                        float present         = sensors.servo[joint.first].present_position;
+                        float goal            = joint.second;
+                        float offset          = goal - present;
+                        float velocity        = offset / config.time_horizon;
+                        float projection_time = std::abs(config.projection_angle / velocity);
 
-                    auto left_joints  = calculateLegJoints(model, left_foot, LimbID::LEFT_LEG);
-                    auto right_joints = calculateLegJoints(model, right_foot, LimbID::RIGHT_LEG);
-                    auto waypoints    = std::make_unique<std::vector<ServoCommand>>();
+                        if (limb == LimbID::RIGHT_LEG) {
+                            continue;
+                        }
 
-                    // Create the target time based on the time horizon
-                    const NUClear::clock::time_point target_time =
-                        time_point_cast<NUClear::clock::duration>(now + duration<double>(config.time_horizon));
+                        // If our target speed is not too slow, or too fast project our velocity
+                        float target      = goal;
+                        float target_time = config.time_horizon;
+                        if (std::abs(offset) > config.min_rotation && std::abs(offset) < config.projection_angle) {
+                            target      = present + velocity * projection_time;
+                            target_time = projection_time;
+                            log("success");
+                        }
+                        // Too small a movement go straight there
+                        else if (std::abs(offset) < config.min_rotation) {
+                            target_time = 0;
+                        }
 
-
-                    // HACK: By putting a 0 timepoint waypoints first, we trick the Controller into dumping future
-                    // commands (previous horizon) for (const auto& joint : right_joints) {
-                    //     waypoints->emplace_back(
-                    //         foot_target.subsumption_id,
-                    //         NUClear::clock::time_point(NUClear::clock::duration(0)),
-                    //         joint.first,
-                    //         joint.second,
-                    //         torso_target.is_right_foot_support ? config.support_gain : config.swing_gain,
-                    //         100);
-                    //     waypoints->emplace_back(
-                    //         foot_target.subsumption_id,
-                    //         target_time,
-                    //         joint.first,
-                    //         joint.second,
-                    //         torso_target.is_right_foot_support ? config.support_gain : config.swing_gain,
-                    //         100);
-                    // }
-
-                    for (const auto& joint : left_joints) {
-                        waypoints->emplace_back(
-                            foot_target.subsumption_id,
-                            NUClear::clock::time_point(NUClear::clock::duration(0)),
-                            joint.first,
-                            joint.second,
-                            torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
-                            100);
-                        waypoints->emplace_back(
-                            foot_target.subsumption_id,
-                            target_time,
-                            joint.first,
-                            joint.second,
-                            torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
-                            100);
+                        auto target_timepoint =
+                            time_point_cast<NUClear::clock::duration>(now + duration<double>(target_time));
+                        // Send a clear command
+                        waypoints->emplace_back(foot_target.subsumption_id,
+                                                NUClear::clock::time_point(NUClear::clock::duration(0)),
+                                                joint.first);
+                        waypoints->emplace_back(foot_target.subsumption_id,
+                                                target_timepoint,
+                                                joint.first,
+                                                target,
+                                                limb == LimbID::RIGHT_LEG && torso_target.is_right_foot_support
+                                                    ? config.support_gain
+                                                    : config.swing_gain,
+                                                100);
                     }
 
                     // Emit our locations to move to
