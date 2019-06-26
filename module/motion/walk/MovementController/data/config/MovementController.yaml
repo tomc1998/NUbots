@@ -14,8 +14,10 @@ torso:
   max_translation: 0.10
 
 # Gain for the support and swing legs
-support_gain: 15
-swing_gain: 15
+gains:
+  support_gain: 15
+  swing_gain: 15
+  swing_lean_gain: 5
 
 # How far in the future we are sending the movements (seconds)
 time_horizon: 0.05

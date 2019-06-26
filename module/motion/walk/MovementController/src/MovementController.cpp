@@ -61,10 +61,12 @@ namespace motion {
 
                 // Motion controller config
                 config.time_horizon     = cfg["time_horizon"].as<Expression>();
-                config.support_gain     = cfg["support_gain"].as<Expression>();
-                config.swing_gain       = cfg["swing_gain"].as<Expression>();
                 config.projection_angle = cfg["projection_angle"].as<Expression>();
                 config.min_rotation     = cfg["min_rotation"].as<Expression>();
+
+                config.support_gain    = cfg["gains"]["support_gain"].as<Expression>();
+                config.swing_gain      = cfg["gains"]["swing_gain"].as<Expression>();
+                config.swing_lean_gain = cfg["gains"]["swing_lean_gain"].as<Expression>();
             });
 
 
@@ -80,6 +82,8 @@ namespace motion {
                     auto torso_time_left = duration_cast<duration<double>>(torso_target.timestamp - now).count();
                     auto swing_time_left = duration_cast<duration<double>>(foot_target.timestamp - now).count();
 
+                    const auto final_time = torso_target.timestamp;
+
                     // Retrieve the target matrices
                     Eigen::Affine3d Ht_tg(torso_target.Ht_tg);
                     Eigen::Affine3d Hw_tg(foot_target.Hw_tg);
@@ -87,6 +91,8 @@ namespace motion {
                     // If we are within time_horizon of our target, we always make time_horizon our target
                     torso_time_left = torso_time_left < config.time_horizon ? config.time_horizon : torso_time_left;
                     swing_time_left = swing_time_left < config.time_horizon ? config.time_horizon : swing_time_left;
+
+                    double w_gain = foot_target.lift ? config.swing_gain : config.swing_lean_gain;
 
                     // Find the support foot to torso transformation matrix, and the swing foot to torso transformation
                     // matrix
@@ -164,54 +170,91 @@ namespace motion {
                     // By using g here, we are assuming the support foot is flat on the ground,
                     // and if it's not it'll try to make it flat on the ground
 
-                    const Transform3D t_t         = convert<double, 4, 4>(Ht_ng.matrix());
+                    const Transform3D t_t         = convert<double, 4, 4>(Ht_tg.matrix());
                     const Transform3D t_w         = convert<double, 4, 4>(Ht_nw_n.matrix());
                     const Transform3D& left_foot  = torso_target.is_right_foot_support ? t_w : t_t;
                     const Transform3D& right_foot = torso_target.is_right_foot_support ? t_t : t_w;
 
+                    auto left_joints  = calculateLegJoints(model, left_foot, LimbID::LEFT_LEG);
+                    auto right_joints = calculateLegJoints(model, right_foot, LimbID::RIGHT_LEG);
+
                     // Look through each servo
                     auto waypoints = std::make_unique<std::vector<ServoCommand>>();
-                    for (const auto& joint : calculateLegJoints(model, left_foot, right_foot)) {
 
-                        LimbID limb           = LimbID::limbForServo(joint.first);
-                        float present         = sensors.servo[joint.first].present_position;
-                        float goal            = joint.second;
-                        float offset          = goal - present;
-                        float velocity        = offset / config.time_horizon;
-                        float projection_time = std::abs(config.projection_angle / velocity);
-
-                        if (limb == LimbID::RIGHT_LEG) {
-                            continue;
-                        }
-
-                        // If our target speed is not too slow, or too fast project our velocity
-                        float target      = goal;
-                        float target_time = config.time_horizon;
-                        if (std::abs(offset) > config.min_rotation && std::abs(offset) < config.projection_angle) {
-                            target      = present + velocity * projection_time;
-                            target_time = projection_time;
-                            log("success");
-                        }
-                        // Too small a movement go straight there
-                        else if (std::abs(offset) < config.min_rotation) {
-                            target_time = 0;
-                        }
-
-                        auto target_timepoint =
-                            time_point_cast<NUClear::clock::duration>(now + duration<double>(target_time));
-                        // Send a clear command
+                    for (const auto& joint : left_joints) {
+                        // waypoints->emplace_back(
+                        //     foot_target.subsumption_id,
+                        //     NUClear::clock::time_point(NUClear::clock::duration(0)),
+                        //     joint.first,
+                        //     joint.second,
+                        //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
+                        //     100);
                         waypoints->emplace_back(foot_target.subsumption_id,
-                                                NUClear::clock::time_point(NUClear::clock::duration(0)),
-                                                joint.first);
-                        waypoints->emplace_back(foot_target.subsumption_id,
-                                                target_timepoint,
+                                                final_time,
                                                 joint.first,
-                                                target,
-                                                limb == LimbID::RIGHT_LEG && torso_target.is_right_foot_support
-                                                    ? config.support_gain
-                                                    : config.swing_gain,
+                                                joint.second,
+                                                torso_target.is_right_foot_support ? w_gain : config.support_gain,
                                                 100);
                     }
+
+
+                    for (const auto& joint : right_joints) {
+                        // waypoints->emplace_back(
+                        //     foot_target.subsumption_id,
+                        //     NUClear::clock::time_point(NUClear::clock::duration(0)),
+                        //     joint.first,
+                        //     joint.second,
+                        //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
+                        //     100);
+                        waypoints->emplace_back(foot_target.subsumption_id,
+                                                final_time,
+                                                joint.first,
+                                                joint.second,
+                                                torso_target.is_right_foot_support ? config.support_gain : w_gain,
+                                                100);
+                    }
+
+                    // for (const auto& joint : calculateLegJoints(model, left_foot, right_foot)) {
+
+                    //     LimbID limb           = LimbID::limbForServo(joint.first);
+                    //     float present         = sensors.servo[joint.first].present_position;
+                    //     float goal            = joint.second;
+                    //     float offset          = goal - present;
+                    //     float velocity        = offset / config.time_horizon;
+                    //     float projection_time = std::abs(config.projection_angle / velocity);
+
+                    //     if (limb == LimbID::RIGHT_LEG) {
+                    //         continue;
+                    //     }
+
+                    //     // If our target speed is not too slow, or too fast project our velocity
+                    //     float target      = goal;
+                    //     float target_time = config.time_horizon;
+                    //     if (std::abs(offset) > config.min_rotation && std::abs(offset) < config.projection_angle) {
+                    //         target      = present + velocity * projection_time;
+                    //         target_time = projection_time;
+                    //         log("success");
+                    //     }
+                    //     // Too small a movement go straight there
+                    //     else if (std::abs(offset) < config.min_rotation) {
+                    //         target_time = 0;
+                    //     }
+
+                    //     auto target_timepoint =
+                    //         time_point_cast<NUClear::clock::duration>(now + duration<double>(target_time));
+                    //     // Send a clear command
+                    //     waypoints->emplace_back(foot_target.subsumption_id,
+                    //                             NUClear::clock::time_point(NUClear::clock::duration(0)),
+                    //                             joint.first);
+                    //     waypoints->emplace_back(foot_target.subsumption_id,
+                    //                             target_timepoint,
+                    //                             joint.first,
+                    //                             target,
+                    //                             limb == LimbID::RIGHT_LEG && torso_target.is_right_foot_support
+                    //                                 ? config.support_gain
+                    //                                 : config.swing_gain,
+                    //                             100);
+                    // }
 
                     // Emit our locations to move to
                     emit(waypoints);

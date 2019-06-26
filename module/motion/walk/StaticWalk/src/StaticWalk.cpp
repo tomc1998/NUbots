@@ -203,7 +203,7 @@ namespace motion {
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
                         Hgt_t.translation() = rT_tGg;
-                        Hgt_t.translation() = Eigen::Vector3d(0, 0, 0.45);
+                        // Hgt_t.translation() = Eigen::Vector3d(x_offset, -y_offset, 0.45);
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 
@@ -234,7 +234,7 @@ namespace motion {
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
                         Hgt_t.translation() = rT_tGg;
-                        Hgt_t.translation() = Eigen::Vector3d(0, 0, 0.45);
+                        // Hgt_t.translation() = Eigen::Vector3d(x_offset, y_offset, 0.45);
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 
