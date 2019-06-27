@@ -136,16 +136,19 @@ namespace motion {
             }
 
             // Set the translation of the matrix to the correct vector
-            Hw_ng.linear() =
-                Eigen::Quaterniond(Hwg.linear()).slerp(factor, Eigen::Quaterniond(Hw_tg.linear())).toRotationMatrix();
+            // Hw_ng.linear() =
+            //     Eigen::Quaterniond(Hwg.linear()).slerp(factor,
+            //     Eigen::Quaterniond(Hw_tg.linear())).toRotationMatrix();
+
 
             Eigen::Affine3d Hgn;
-            Hgn.linear()        = Hw_ng.linear().transpose();
+            Hgn.linear()        = Hw_tg.linear().transpose();
             Hgn.translation()   = rNGg;
-            Hw_ng.translation() = Hgn.inverse().translation();
+            Hw_ng.translation() = Hgn.inverse();
 
-            Hw_ng.linear() =
-                Eigen::Quaterniond(Hwg.linear()).slerp(factor, Eigen::Quaterniond(Hw_tg.linear())).toRotationMatrix();
+            // Hw_ng.linear() =
+            //     Eigen::Quaterniond(Hwg.linear()).slerp(factor,
+            //     Eigen::Quaterniond(Hw_tg.linear())).toRotationMatrix();
 
             return Hw_ng;
         }
