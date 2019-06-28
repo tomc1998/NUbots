@@ -168,7 +168,7 @@ namespace motion {
 
                             // swingfoot (left) to supportfoot (right)
                             // log("leftstep");
-                            // Support foot *right) to swingfoot (left)
+                            // Support foot (right) to swingfoot (left)
                             // This works better than other way.
                             // Hff_s = (sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse()
                             //         * (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
@@ -268,11 +268,10 @@ namespace motion {
                         if (rotation == 0 || rotation > rotation_limit) {
                             Eigen::Vector3d target = translation * time;
                             target.y() -= stance_width;
-                            Haf.linear() = Eigen::Matrix3d::Identity();
                             Eigen::Affine3d Hfa;
                             Hfa.linear()      = Eigen::Matrix3d::Identity();
                             Hfa.translation() = target;
-                            Haf.translation() = Hfa.inverse().translation();
+                            Haf               = Hfa.inverse();
                         }
 
 
@@ -301,7 +300,7 @@ namespace motion {
                         // Move the right foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(
                             start_phase + phase_time, true, Haf.matrix(), true, subsumptionId));
-                        log("rightstep");
+                        // log("rightstep");
                     } break;
 
 
@@ -319,11 +318,10 @@ namespace motion {
                         if (rotation == 0 || rotation > rotation_limit) {
                             Eigen::Vector3d target = translation * time;
                             target.y() += stance_width;
-                            Haf.linear() = Eigen::Matrix3d::Identity();
                             Eigen::Affine3d Hfa;
                             Hfa.linear()      = Eigen::Matrix3d::Identity();
                             Hfa.translation() = target;
-                            Haf.translation() = Hfa.inverse().translation();
+                            Haf               = Hfa.inverse();
                         }
 
                         // If there is rotation, adjust the translation and rotation for this
@@ -354,7 +352,7 @@ namespace motion {
                         // Move the left foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(
                             start_phase + phase_time, false, Haf.matrix(), true, subsumptionId));
-                        log("leftstep");
+                        // log("leftstep");
                     } break;
                     default: break;
                 }

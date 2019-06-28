@@ -43,35 +43,35 @@ namespace motion {
             //-------------VECTOR FIELD STUFF--------------------------------
             //---------------------------------------------------------------
 
-            // Create matrix Hpg (ground to plane space)
-            Eigen::Affine3d Hpg = Hw_tg;
-            // Set the rotation of this matrix to identity. This means, the space is rotated to align with ground
-            Hpg.linear() = Eigen::Matrix3d::Identity();
+            // // Create matrix Hpg (ground to plane space)
+            // Eigen::Affine3d Hpg = Hw_tg;
+            // // Set the rotation of this matrix to identity. This means, the space is rotated to align with ground
+            // Hpg.linear() = Eigen::Matrix3d::Identity();
 
-            // Create matrix from plane space to swing foot
-            Eigen::Affine3d Hwp = Hwg * Hpg.inverse();
-            // get the translation of target to swing foot
-            Eigen::Vector3d target_to_swing = Hwp.inverse().translation();
+            // // Create matrix from plane space to swing foot
+            // Eigen::Affine3d Hwp = Hwg * Hpg.inverse();
+            // // get the translation of target to swing foot
+            // Eigen::Vector3d target_to_swing = Hwp.inverse().translation();
 
-            // set the vector to 0 so that we can align the vector field with ground space rather than on an angle
-            target_to_swing.z() = 0;
+            // // set the vector to 0 so that we can align the vector field with ground space rather than on an angle
+            // target_to_swing.z() = 0;
 
-            // get the angle between the x axis and the vector to the swing foot
-            double alpha = std::acos(target_to_swing.normalized().dot(Eigen::Vector3d::UnitX()));
+            // // get the angle between the x axis and the vector to the swing foot
+            // double alpha = std::acos(target_to_swing.normalized().dot(Eigen::Vector3d::UnitX()));
 
-            // Rotate the matrix about the z-axis by alpha so target space is now facing the swing foot
-            // At this point, we can no longer use Hpg for plane space
-            Hwp.rotate(Eigen::AngleAxisd(alpha, Eigen::Vector3d::UnitZ()));
+            // // Rotate the matrix about the z-axis by alpha so target space is now facing the swing foot
+            // // At this point, we can no longer use Hpg for plane space
+            // Hwp.rotate(Eigen::AngleAxisd(alpha, Eigen::Vector3d::UnitZ()));
 
-            // target to swing foot vector Hpw
-            Eigen::Vector3d rWPp = Hwp.inverse().translation();
+            // // target to swing foot vector Hpw
+            // Eigen::Vector3d rWPp = Hwp.inverse().translation();
 
-            // apply vector field to rNTarget
-            Eigen::Vector3d vectorfield(f_x(rWPp), 0, f_z(rWPp));
-            Eigen::Vector3d rNPp = rWPp + (vectorfield.normalized() * rWPp.norm() * (time_horizon / time_left));
+            // // apply vector field to rNTarget
+            // Eigen::Vector3d vectorfield(f_x(rWPp), 0, f_z(rWPp));
+            // Eigen::Vector3d rNPp = rWPp + (vectorfield.normalized() * rWPp.norm() * (time_horizon / time_left));
 
-            // Get rNWw then change it to ground space to get rNGg
-            Eigen::Vector3d rNGg = Hwg.inverse() * (Hwp * rNPp);
+            // // Get rNWw then change it to ground space to get rNGg
+            // Eigen::Vector3d rNGg = Hwg.inverse() * (Hwp * rNPp);
 
 
             //---------------------------------------------------------------
