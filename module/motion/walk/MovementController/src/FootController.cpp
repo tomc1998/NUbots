@@ -73,6 +73,17 @@ namespace motion {
             // Get rNWw then change it to ground space to get rNGg
             Eigen::Vector3d rNGg = Hwg.inverse() * (Hwp * rNPp);
 
+
+            //---------------------------------------------------------------
+            //-------------VECTOR FIELD STUFF--------------------------------
+            //---------------------------------------------------------------
+
+            Eigen::Affine3d Hw_tw    = Hw_tg * Hwg.inverse();
+            Eigen::Vector3d rWW_tw_t = Hw_tw.translation();
+            Eigen::Vector3d rNW_tw_t =
+                rWW_tw_t + (Eigen::Vector3d(f_x(rWW_tw_t), 0, f_z(rWW_tw_t)).normalized() * factor * rWW_tw_t.norm());
+            rNGg = Hw_tg.inverse() * rNW_tw_t;
+
             //---------------------------------------------------------------
             //------------CLANK----------------------------------------------
             //---------------------------------------------------------------
@@ -142,9 +153,9 @@ namespace motion {
 
 
             Eigen::Affine3d Hgn;
-            Hgn.linear()        = Hw_tg.linear().transpose();
-            Hgn.translation()   = rNGg;
-            Hw_ng.translation() = Hgn.inverse();
+            Hgn.linear()      = Hw_tg.linear().transpose();
+            Hgn.translation() = rNGg;
+            Hw_ng             = Hgn.inverse();
 
             // Hw_ng.linear() =
             //     Eigen::Quaterniond(Hwg.linear()).slerp(factor,

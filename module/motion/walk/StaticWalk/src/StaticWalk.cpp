@@ -128,6 +128,8 @@ namespace motion {
                     Hwg = state == LEFT_LEAN
                               ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse() * Htg
                               : Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse() * Htg;
+
+                    Hwg.linear() = Eigen::Matrix3d::Identity();
                 }
 
                 // When the time is over for this phase, begin the next phase
@@ -136,7 +138,7 @@ namespace motion {
                     start_phase = NUClear::clock::now();
                     // Change the state of the walk based on what the previous state was
                     switch (state) {
-                        case LEFT_LEAN: state = LEFT_LEAN; break;
+                        case LEFT_LEAN: state = RIGHT_STEP; break;
                         case RIGHT_STEP: {
                             // Store where support is relative to swing
                             // log("rightstep");
@@ -154,10 +156,10 @@ namespace motion {
                             //*(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse();
                             // swingfoot space to ground space
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse() * Htg;
-
-                            state = RIGHT_LEAN;
+                            Hwg.linear() = Eigen::Matrix3d::Identity();
+                            state        = RIGHT_LEAN;
                         } break;
-                        case RIGHT_LEAN: state = RIGHT_LEAN; break;
+                        case RIGHT_LEAN: state = LEFT_STEP; break;
                         case LEFT_STEP: {
                             // Store where support is relative to swing
                             // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()
@@ -177,6 +179,7 @@ namespace motion {
 
 
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse() * Htg;
+                            Hwg.linear() = Eigen::Matrix3d::Identity();
 
                             state = LEFT_LEAN;
                         } break;
@@ -203,7 +206,7 @@ namespace motion {
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
                         Hgt_t.translation() = rT_tGg;
-                        // Hgt_t.translation() = Eigen::Vector3d(x_offset, -y_offset, 0.45);
+                        Hgt_t.translation() = Eigen::Vector3d(x_offset, -y_offset, torso_height);
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 
@@ -234,7 +237,7 @@ namespace motion {
                         Eigen::Affine3d Hgt_t;
                         Hgt_t.linear()      = Eigen::Matrix3d::Identity();
                         Hgt_t.translation() = rT_tGg;
-                        // Hgt_t.translation() = Eigen::Vector3d(x_offset, y_offset, 0.45);
+                        Hgt_t.translation() = Eigen::Vector3d(x_offset, y_offset, torso_height);
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 

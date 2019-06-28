@@ -175,8 +175,12 @@ namespace motion {
                     const Transform3D& left_foot  = torso_target.is_right_foot_support ? t_w : t_t;
                     const Transform3D& right_foot = torso_target.is_right_foot_support ? t_t : t_w;
 
+
                     auto left_joints  = calculateLegJoints(model, left_foot, LimbID::LEFT_LEG);
                     auto right_joints = calculateLegJoints(model, right_foot, LimbID::RIGHT_LEG);
+
+                    auto foot_time =
+                        time_point_cast<NUClear::clock::duration>(now + duration<double>(config.time_horizon));
 
                     // Look through each servo
                     auto waypoints = std::make_unique<std::vector<ServoCommand>>();
@@ -190,7 +194,7 @@ namespace motion {
                         //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
                         //     100);
                         waypoints->emplace_back(foot_target.subsumption_id,
-                                                final_time,
+                                                torso_target.is_right_foot_support ? foot_time : final_time,
                                                 joint.first,
                                                 joint.second,
                                                 torso_target.is_right_foot_support ? w_gain : config.support_gain,
@@ -207,7 +211,7 @@ namespace motion {
                         //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
                         //     100);
                         waypoints->emplace_back(foot_target.subsumption_id,
-                                                final_time,
+                                                torso_target.is_right_foot_support ? final_time : foot_time,
                                                 joint.first,
                                                 joint.second,
                                                 torso_target.is_right_foot_support ? config.support_gain : w_gain,
