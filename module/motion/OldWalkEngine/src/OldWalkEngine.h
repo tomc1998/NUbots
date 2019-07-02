@@ -24,6 +24,7 @@
 #include <nuclear>
 
 #include <yaml-cpp/yaml.h>
+#include <fstream>
 
 #include "message/behaviour/ServoCommand.h"
 #include "message/input/Sensors.h"
@@ -189,6 +190,8 @@ namespace motion {
         double balancePGain;
         double balanceIGain;
         double balanceDGain;
+
+        std::ofstream out_file;
 
         NUClear::clock::time_point lastVeloctiyUpdateTime;
 

@@ -170,8 +170,21 @@ namespace motion {
         //     }
         // }));
 
-        on<Startup, Trigger<KinematicsModel>>().then("Update Kin Model",
-                                                     [this](const KinematicsModel& model) { kinematicsModel = model; });
+        on<Startup, Trigger<KinematicsModel>>().then("Update Kin Model", [this](const KinematicsModel& model) {
+            kinematicsModel = model;
+            out_file        = std::ofstream("walk_cycle.csv", std::ios::out);
+
+            out_file << "zs_x,z1_x,z2_x,x1_x,x2_x,phase1Single_x,phase2Single_x,stepTime_x,zmpTime_x,zs_y,z1_y,z2_y,x1_"
+                        "y,x2_y,phase1Single_y,phase2Single_y,stepTime_y,zmpTime_y";
+            out_file
+                << "phase,zmpCoefficients[0],zmpCoefficients[1],zmpCoefficients[2],zmpCoefficients[3],zmpParams[0],"
+                   "zmpParams[1],zmpParams[2],zmpParams[3],stepTime,zmpTime,phase1Single,phase2Single,uSupport.xy()[0],"
+                   "uSupport.xy()[1],uSupport.angle(),uLeftFootDestination.xy()[0],uLeftFootDestination.xy()[1],"
+                   "uLeftFootDestination.angle(),uLeftFootSource.xy()[0],uLeftFootSource.xy()[1],uLeftFootSource.angle("
+                   "),uRightFootDestination.xy()[0],uRightFootDestination.xy()[1],uRightFootDestination.angle(),"
+                   "uRightFootSource.xy()[0],uRightFootSource.xy()[1],uRightFootSource.angle(),"
+                << std::endl;
+        });
 
         on<Trigger<EnableWalkEngineCommand>>().then([this](const EnableWalkEngineCommand& command) {
             subsumptionId = command.subsumptionId;
@@ -765,6 +778,8 @@ namespace motion {
                                        double phase2Single,
                                        double stepTime,
                                        double zmpTime) {
+        out_file << zs << "," << z1 << "," << z2 << "," << x1 << "," << x2 << "," << phase1Single << "," << phase2Single
+                 << "," << stepTime << "," << zmpTime << ",";
         /*
         Solves ZMP equations.
         The resulting form of x is
@@ -797,6 +812,17 @@ namespace motion {
                                       Transform2D uLeftFootSource,
                                       Transform2D uRightFootDestination,
                                       Transform2D uRightFootSource) {
+        out_file << phase << "," << zmpCoefficients[0] << "," << zmpCoefficients[1] << "," << zmpCoefficients[2] << ","
+                 << zmpCoefficients[3] << "," << zmpParams[0] << "," << zmpParams[1] << "," << zmpParams[2] << ","
+                 << zmpParams[3] << "," << stepTime << "," << zmpTime << "," << phase1Single << "," << phase2Single
+                 << "," << uSupport.xy()[0] << "," << uSupport.xy()[1] << "," << uSupport.angle() << ","
+                 << uLeftFootDestination.xy()[0] << "," << uLeftFootDestination.xy()[1] << ","
+                 << uLeftFootDestination.angle() << "," << uLeftFootSource.xy()[0] << "," << uLeftFootSource.xy()[1]
+                 << "," << uLeftFootSource.angle() << "," << uRightFootDestination.xy()[0] << ","
+                 << uRightFootDestination.xy()[1] << "," << uRightFootDestination.angle() << ","
+                 << uRightFootSource.xy()[0] << "," << uRightFootSource.xy()[1] << "," << uRightFootSource.angle()
+                 << "," << std::endl;
+
         Transform2D com = {0, 0, 0};
         double expT     = std::exp(stepTime * phase / zmpTime);
         com.x()         = uSupport.x() + zmpCoefficients[0] * expT + zmpCoefficients[1] / expT;
