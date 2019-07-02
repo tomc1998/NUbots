@@ -14,14 +14,8 @@ namespace vision {
 
     private:
         struct {
-            double confidence_threshold;
-            int cluster_points;
-            uint min_points_for_consensus;
-            uint max_iterations_per_fitting;
-            uint max_fitted_models;
-            double consensus_error_threshold;
-            double max_angle_difference;
-            double max_line_distance;
+            float confidence_threshold;
+            float covariance;
             bool debug;
         } config;
     };
