@@ -128,11 +128,10 @@ namespace math {
                         particles.col(i) + (model.getRogueRange() % (0.5 - arma::randu(Model::size)));
                 }
 
-                arma::mat observationDifferences = arma::mat(measurement.n_elem, candidateParticles.n_cols);
+                arma::mat observationDifferences = arma::mat(measurement.n_rows, candidateParticles.n_cols);
                 for (unsigned int i = 0; i < candidateParticles.n_cols; ++i) {
-                    arma::vec predictedObservation =
-                        model.predictedObservation(candidateParticles.col(i), measurementArgs...);
-                    observationDifferences.col(i) = model.observationDifference(predictedObservation, measurement);
+                    observationDifferences.col(i) = model.observationDifference(
+                        model.predictedObservation(candidateParticles.col(i), measurementArgs...), measurement);
                 }
                 arma::vec weights =
                     arma::exp(
