@@ -100,8 +100,71 @@ namespace localisation {
 
 
     arma::vec RobotModel::observationDifference(const arma::vec& a, const arma::vec& b) {
-
         return a - b;
+    }
+
+    arma::vec RobotModel::observationDifference(const arma::mat& field, const arma::mat& pts) {
+        // Calculate all of the cross products
+        arma::Mat<double>::fixed<16, 3> crosses;
+        for (int row = 0; row < field.n_rows; ++row) {
+            crosses.row(row) = arma::normalise(arma::cross(field.submat(row, 0, row, 2), field.submat(row, 4, row, 6)));
+        }
+
+        // Figure out the error for each point
+        arma::vec errors(pts.n_rows);
+        errors.fill(arma::datum::inf);
+        for (int pt = 0; pt < pts.n_rows; ++pt) {
+            arma::rowvec pt_norm = arma::normalise(pts.submat(pt, 0, pt, 2));
+            for (int row = 0; row < field.n_rows; ++row) {
+                arma::rowvec cross_norm = crosses.row(row);
+                arma::rowvec v0         = arma::normalise(field.submat(row, 0, row, 2));
+                arma::rowvec v1         = arma::normalise(field.submat(row, 4, row, 6));
+
+                double error            = arma::dot(cross_norm, pt_norm);
+                arma::rowvec projection = arma::normalise(pt_norm - cross_norm * error);
+                double range            = arma::dot(v0, v1);
+                double offset           = arma::dot(v0, pt_norm);
+
+                if ((0.0 <= offset) && (offset <= range)) {
+                    double angle = std::acos(error);
+                    if (angle < errors(pt)) {
+                        errors(pt) = angle;
+                    }
+                }
+            }
+        }
+
+        // Find any points that didnt match a line and assign it to the closest line
+        for (int pt = 0; pt < pts.n_rows; ++pt) {
+            if (!std::isfinite(errors(pt))) {
+                arma::vec pt_norm = arma::normalise(pts.row(pt));
+                for (int row = 0; row < pts.n_rows; ++row) {
+                    arma::rowvec cross_norm = crosses.row(row);
+                    double angle            = std::acos(arma::dot(cross_norm, pt_norm));
+                    if (angle < errors(pt)) {
+                        errors(pt) = angle;
+                    }
+                }
+            }
+        }
+
+        return errors;
+    }
+
+    /// Return the predicted observation of an object at the given position
+    arma::Mat<double>::fixed<16, 8> RobotModel::predictedObservation(const arma::vec::fixed<RobotModel::size>& state,
+                                                                     const utility::math::matrix::Transform3D& Hcw) {
+        // Convert field lines in field space to field lines in world space
+        Transform3D Hfw = fieldStateToTransform3D(state);
+        Transform3D Hcf = Hcw * Hfw.i();
+        arma::Mat<double>::fixed<16, 8> world_lines;
+        // (AB)^T = B^T A^T
+        world_lines.submat(0, 0, field_lines.n_rows - 1, 3) =
+            field_lines.submat(0, 0, field_lines.n_rows - 1, 3) * Hcf.t();
+        world_lines.submat(0, 4, field_lines.n_rows - 1, 7) =
+            field_lines.submat(0, 4, field_lines.n_rows - 1, 7) * Hcf.t();
+
+        return world_lines;
     }
 
     arma::vec::fixed<RobotModel::size> RobotModel::limitState(const arma::vec::fixed<RobotModel::size>& state) {

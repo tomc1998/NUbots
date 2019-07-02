@@ -53,8 +53,11 @@ namespace localisation {
                                        const utility::math::matrix::Transform3D& Hcw,
                                        const message::vision::Goal::MeasurementType& type,
                                        const message::support::FieldDescription& fd);
+        arma::Mat<double>::fixed<16, 8> predictedObservation(const arma::vec::fixed<RobotModel::size>& state,
+                                                             const utility::math::matrix::Transform3D& Hcw);
 
         arma::vec observationDifference(const arma::vec& a, const arma::vec& b);
+        arma::vec observationDifference(const arma::mat& field, const arma::mat& pts);
 
         arma::vec::fixed<size> limitState(const arma::vec::fixed<size>& state);
 
@@ -65,6 +68,8 @@ namespace localisation {
         // number and range of reset particles
         int n_rogues          = 0;
         arma::vec3 resetRange = {0, 0, 0};
+
+        arma::Mat<double>::fixed<16, 8> field_lines;
 
         // Getters
         int getRogueCount() const {

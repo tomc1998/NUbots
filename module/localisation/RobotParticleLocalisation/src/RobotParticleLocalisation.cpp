@@ -1,12 +1,14 @@
 #include "RobotParticleLocalisation.h"
 
 #include "extension/Configuration.h"
+
 #include "message/input/Sensors.h"
 #include "message/localisation/Field.h"
 #include "message/localisation/ResetRobotHypotheses.h"
+#include "message/vision/FieldLine.h"
 #include "message/vision/Goal.h"
-#include "utility/localisation/transform.h"
 
+#include "utility/localisation/transform.h"
 #include "utility/math/geometry/Circle.h"
 #include "utility/nusight/NUhelpers.h"
 #include "utility/support/eigen_armadillo.h"
@@ -24,6 +26,7 @@ namespace localisation {
     using message::support::FieldDescription;
     using VisionGoal  = message::vision::Goal;
     using VisionGoals = message::vision::Goals;
+    using VisionLines = message::vision::FieldLines;
 
     using utility::localisation::transform3DToFieldState;
     using utility::math::geometry::Circle;
@@ -69,6 +72,54 @@ namespace localisation {
 
             reset->hypotheses.push_back(rightSide);
             emit(std::move(reset));
+        });
+
+        on<Startup, With<FieldDescription>>().then([this](const FieldDescription& field) {
+            // Find field corner pairs in field space
+            // Use center of field as origin, +x facing opponent goals, +y to the left, +z up
+            const double line_width   = field.dimensions.line_width;
+            const double half_length  = (field.dimensions.field_length - line_width) * 0.5;
+            const double half_width   = (field.dimensions.field_width - line_width) * 0.5;
+            const double goal_width   = (field.dimensions.goal_area_width - line_width) * 0.5;
+            const double goal_length  = field.dimensions.goal_area_length - line_width;
+            const double penalty_mark = field.dimensions.penalty_mark_distance - line_width * 0.5;
+            // clang-format off
+            filter.model.field_lines = {{ 0.0,                                       half_width, 0.0, 1.0, // Center line
+                                          0.0,                                      -half_width, 0.0, 1.0},
+                                        { half_length,                               half_width, 0.0, 1.0, // Opponent goal line
+                                          half_length,                              -half_width, 0.0, 1.0},
+                                        {-half_length,                               half_width, 0.0, 1.0, // Own goal line
+                                         -half_length,                              -half_width, 0.0, 1.0},
+                                        { half_length,                               half_width, 0.0, 1.0, // Left side line
+                                         -half_length,                               half_width, 0.0, 1.0},
+                                        { half_length,                              -half_width, 0.0, 1.0, // Right side line
+                                         -half_length,                              -half_width, 0.0, 1.0},
+
+                                        { half_length - goal_length,                 goal_width, 0.0, 1.0, // Opponent goal box line
+                                          half_length - goal_length,                -goal_width, 0.0, 1.0},
+                                        { half_length,                               goal_width, 0.0, 1.0, // Opponent left goal box line
+                                          half_length - goal_length,                 goal_width, 0.0, 1.0},
+                                        { half_length,                              -goal_width, 0.0, 1.0, // Opponent right goal box line
+                                          half_length - goal_length,                -goal_width, 0.0, 1.0},
+
+                                        {-(half_length - goal_length),               goal_width, 0.0, 1.0, // Opponent goal box line
+                                         -(half_length - goal_length),              -goal_width, 0.0, 1.0},
+                                        {-half_length,                               goal_width, 0.0, 1.0, // Own left goal box line
+                                         -(half_length - goal_length),               goal_width, 0.0, 1.0},
+                                        {-half_length,                              -goal_width, 0.0, 1.0, // Own right goal box line
+                                         -(half_length - goal_length),              -goal_width, 0.0, 1.0},
+
+                                        {-line_width,                                0.0,        0.0, 1.0, // Centre field mark
+                                          line_width,                                0.0,        0.0, 1.0},
+                                        { half_length - penalty_mark - line_width,   0.0,        0.0, 1.0, // Opponent penalty mark
+                                          half_length - penalty_mark + line_width,   0.0,        0.0, 1.0},
+                                        { half_length - penalty_mark,                line_width, 0.0, 1.0,
+                                          half_length - penalty_mark,               -line_width, 0.0, 1.0},
+                                        {-(half_length - penalty_mark - line_width), 0.0,        0.0, 1.0, // Opponent penalty mark
+                                         -(half_length - penalty_mark + line_width), 0.0,        0.0, 1.0},
+                                        {-(half_length - penalty_mark),              line_width, 0.0, 1.0,
+                                         -(half_length - penalty_mark),             -line_width, 0.0, 1.0}};
+            // clang-format on
         });
 
         on<Every<PARTICLE_UPDATE_FREQUENCY, Per<std::chrono::seconds>>, Sync<RobotParticleLocalisation>>().then(
@@ -133,6 +184,28 @@ namespace localisation {
                             }
                         }
                     }
+                }
+            });
+
+        on<Trigger<VisionLines>, With<FieldDescription>, Sync<RobotParticleLocalisation>>().then(
+            "Measurement Update", [this](const VisionLines& lines, const FieldDescription& field) {
+                if (!lines.points.empty()) {
+                    /* Perform time update */
+                    auto curr_time        = NUClear::clock::now();
+                    double seconds        = TimeDifferenceSeconds(curr_time, last_time_update_time);
+                    last_time_update_time = curr_time;
+
+                    filter.timeUpdate(seconds);
+
+                    // Copy measurements into a matrix
+                    arma::mat measurements(lines.points.size(), 4);
+                    for (int i = 0; i < lines.points.size(); ++i) {
+                        measurements.row(i) = arma::rowvec4{
+                            lines.points[i].point.x(), lines.points[i].point.y(), lines.points[i].point.z(), 1.0};
+                    }
+                    Eigen::MatrixXd e_cov(lines.covariance.cast<double>());
+                    arma::mat cov = convert(e_cov);
+                    filter.measurementUpdate(measurements, cov, convert(lines.Hcw));
                 }
             });
 
