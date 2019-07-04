@@ -9,21 +9,21 @@ stance:
       left:
         start:
           -  120 * pi / 180 # Shoulder Pitch
-          -   0 * pi / 180 # Shoulder Roll
-          - -90 * pi / 180 # Elbow
+          -  0 * pi / 180 # Shoulder Roll
+          - -50 * pi / 180 # Elbow
         end:
           -  120 * pi / 180 # Shoulder Pitch
-          -   0 * pi / 180 # Shoulder Roll
-          - -90 * pi / 180 # Elbow
+          -  0 * pi / 180 # Shoulder Roll
+          - -50 * pi / 180 # Elbow
       right:
         start:
-          -   120 * pi / 180 # Shoulder Pitch
-          -   0 * pi / 180 # Shoulder Roll
-          - -90 * pi / 180 # Elbow
+          -  120 * pi / 180 # Shoulder Pitch
+          -  0 * pi / 180 # Shoulder Roll
+          - -50 * pi / 180 # Elbow
         end:
           -  120 * pi / 180 # Shoulder Pitch
-          -   0 * pi / 180 # Shoulder Roll
-          - -90 * pi / 180 # Elbow
+          -  0 * pi / 180 # Shoulder Roll
+          - -50 * pi / 180 # Elbow
 
   foot_offset:
     - -0.05 # The distance the ankles are offset from the torso, in meters.
@@ -33,7 +33,7 @@ stance:
     arms: 15
     legs: 10
   # ???
-  limit_margin_y: -0.15
+  limit_margin_y: -0.05
 
 walk_cycle:
   # Defines how long it will take for the robot to take its next step, in seconds.
@@ -56,9 +56,9 @@ walk_cycle:
     leg_yaw: 0 * pi / 180
     # Compensation factors for roll and pitch (<factor> * (current_pos - compensated_pos))
     compensation:
-      roll_coef: 0.8
+      roll_coef: 0.0
       roll_limit: 10 * pi / 180
-      pitch_coef: 0.5
+      pitch_coef: 0.0
       pitch_limit: 10 * pi / 180
   velocity:
     # Velocity limits for the walk
