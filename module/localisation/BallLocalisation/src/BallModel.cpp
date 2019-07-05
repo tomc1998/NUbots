@@ -54,12 +54,11 @@ namespace localisation {
     }
 
     arma::vec BallModel::observationDifference(const arma::vec& measurement, const arma::vec3& rBCc) const {
-
-        return measurement - rBCc;  // not sure this raw delta vector will be what the UKF needs
+        // not sure this raw delta vector will be what the particle filter needs
+        return measurement - rBCc;
     }
 
     arma::vec::fixed<BallModel::size> BallModel::limitState(const arma::vec::fixed<size>& state) const {
-        // TODO: configure
         return state;
     }
 
