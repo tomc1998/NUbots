@@ -53,16 +53,16 @@ namespace localisation {
             filter.reset(start_state, arma::diagmat(start_variance), n_particles);
         });
 
-        /* Run Time Update */
+        // Run Time Update
         on<Every<15, Per<std::chrono::seconds>>, Sync<BallLocalisation>, With<FieldDescription>, With<Sensors>>().then(
             "BallLocalisation Time", [this](const FieldDescription& field, const Sensors& sensors) {
-                /* Perform time update */
+                // Perform time update
                 auto curr_time        = NUClear::clock::now();
                 double seconds        = TimeDifferenceSeconds(curr_time, last_time_update_time);
                 last_time_update_time = curr_time;
                 filter.timeUpdate(seconds);
 
-                /* Creating ball state vector and covariance matrix for emission */
+                // Creating ball state vector and covariance matrix for emission
                 auto ball        = std::make_unique<Ball>();
                 ball->position   = convert(filter.get());
                 ball->covariance = convert(filter.getCovariance());
@@ -75,18 +75,18 @@ namespace localisation {
                 emit(ball);
             });
 
-        /* To run whenever a ball has been detected */
+        // To run whenever a ball has been detected
         on<Trigger<message::vision::Balls>, With<FieldDescription>>().then(
             [this](const message::vision::Balls& balls, const FieldDescription& field) {
                 if (balls.balls.size() > 0) {
-                    /* Call Time Update first */
+                // Call Time Update first
                     auto curr_time        = NUClear::clock::now();
                     double seconds        = TimeDifferenceSeconds(curr_time, last_time_update_time);
                     last_time_update_time = curr_time;
                     filter.timeUpdate(seconds);
 
-                    /* Now call Measurement Update. Supports multiple measurement methods
-                     * and will treat them as
+                // Now call Measurement Update. Supports multiple measurement methods and will treat them as
+                // separate measurements
                      * separate measurements */
                     for (auto& measurement : balls.balls[0].measurements) {
                         filter.measurementUpdate(arma::conv_to<arma::vec>::from(convert(measurement.rBCc)),
