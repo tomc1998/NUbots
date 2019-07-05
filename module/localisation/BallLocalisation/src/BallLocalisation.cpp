@@ -40,23 +40,17 @@ namespace localisation {
         });
 
         on<Configuration, Sync<BallLocalisation>>("BallLocalisation.yaml").then([this](const Configuration& config) {
-            auto message = std::make_unique<std::vector<Ball>>();
-            emit(message);
-            emit(std::make_unique<Ball>());
-
-            ball_pos_log = config["ball_pos_log"].as<bool>();
-            // Use configuration here from file RobotParticleLocalisation.yaml
+            // Use configuration here from file BallLocalisation.yaml
             filter.model.processNoiseDiagonal = config["process_noise_diagonal"].as<arma::vec>();
             filter.model.n_rogues             = config["n_rogues"].as<int>();
             filter.model.resetRange           = config["reset_range"].as<arma::vec>();
             int n_particles                   = config["n_particles"].as<int>();
+            ball_pos_log                      = config["ball_pos_log"].as<bool>();
 
             arma::vec2 start_state    = config["start_state"].as<arma::vec>();
             arma::vec2 start_variance = config["start_variance"].as<arma::vec>();
 
             filter.reset(start_state, arma::diagmat(start_variance), n_particles);
-
-            // Use configuration here from file BallLocalisation.yaml
         });
 
         /* Run Time Update */
