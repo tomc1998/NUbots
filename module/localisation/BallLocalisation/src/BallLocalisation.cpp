@@ -24,6 +24,7 @@ namespace localisation {
     using message::input::Sensors;
     using message::localisation::Ball;
     using message::support::FieldDescription;
+    using message::vision::Balls;
     using utility::time::TimeDifferenceSeconds;
 
     using utility::math::coordinates::cartesianToSpherical;
@@ -76,8 +77,7 @@ namespace localisation {
             });
 
         // To run whenever a ball has been detected
-        on<Trigger<message::vision::Balls>, With<FieldDescription>>().then(
-            [this](const message::vision::Balls& balls, const FieldDescription& field) {
+        on<Trigger<Balls>, With<FieldDescription>>().then([this](const Balls& balls, const FieldDescription& field) {
                 if (balls.balls.size() > 0) {
                 // Call Time Update first
                     auto curr_time        = NUClear::clock::now();
