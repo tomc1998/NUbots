@@ -50,9 +50,7 @@ namespace localisation {
         arma::vec3 rBWw      = {state[PX], state[PY], field.ball_radius};
         arma::vec3 rBCc_cart = Hcw.transformPoint(rBWw);
         arma::vec3 rBCc_sph1 = cartesianToSpherical(rBCc_cart);             // in r,theta,phi
-        arma::vec3 rBCc_sph2 = {rBCc_sph1[0], rBCc_sph1[1], rBCc_sph1[2]};  // in roe, theta, phi, where roe is 1/r
-
-        return rBCc_sph2;
+        return arma::vec3{1.0 / rBCc_sph1[0], rBCc_sph1[1], rBCc_sph1[2]};  // in 1/r, theta, phi
     }
 
     arma::vec BallModel::observationDifference(const arma::vec& measurement, const arma::vec3& rBCc) const {

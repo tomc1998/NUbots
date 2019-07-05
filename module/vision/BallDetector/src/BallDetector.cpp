@@ -153,6 +153,7 @@ namespace vision {
                         // Attach the measurement to the object (distance from camera to ball)
                         b.measurements.push_back(Ball::Measurement());
                         b.measurements.back().rBCc       = cartesianToSpherical(b.cone.axis * distance);
+                        b.measurements.back().rBCc.x()   = 1.0f / b.measurements.back().rBCc.x();
                         b.measurements.back().covariance = config.ball_angular_cov;
 
                         // Angular positions from the camera
