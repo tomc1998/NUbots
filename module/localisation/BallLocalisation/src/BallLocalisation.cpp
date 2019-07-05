@@ -69,7 +69,7 @@ namespace localisation {
                 ball->covariance = convert(filter.getCovariance());
 
                 if (ball_pos_log) {
-                    emit(graph("localisation ball pos", filter.get()[0], filter.get()[1]));
+                    emit(graph("Localisation/Ball/Position", filter.get()[0], filter.get()[1]));
                     log("localisation ball pos = ", filter.get()[0], filter.get()[1]);
                     log("localisation seconds elapsed = ", seconds);
                 }
