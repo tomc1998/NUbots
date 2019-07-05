@@ -78,25 +78,24 @@ namespace localisation {
 
         // To run whenever a ball has been detected
         on<Trigger<Balls>, With<FieldDescription>>().then([this](const Balls& balls, const FieldDescription& field) {
-                if (balls.balls.size() > 0) {
+            if (balls.balls.size() > 0) {
                 // Call Time Update first
-                    auto curr_time        = NUClear::clock::now();
-                    double seconds        = TimeDifferenceSeconds(curr_time, last_time_update_time);
-                    last_time_update_time = curr_time;
-                    filter.timeUpdate(seconds);
+                auto curr_time        = NUClear::clock::now();
+                double seconds        = TimeDifferenceSeconds(curr_time, last_time_update_time);
+                last_time_update_time = curr_time;
+                filter.timeUpdate(seconds);
 
                 // Now call Measurement Update. Supports multiple measurement methods and will treat them as
                 // separate measurements
-                     * separate measurements */
-                    for (auto& measurement : balls.balls[0].measurements) {
-                        filter.measurementUpdate(arma::conv_to<arma::vec>::from(convert(measurement.rBCc)),
-                                                 arma::conv_to<arma::mat>::from(convert(measurement.covariance)),
-                                                 field,
-                                                 convert(balls.Hcw));
-                    }
-                    last_measurement_update_time = curr_time;
+                for (auto& measurement : balls.balls[0].measurements) {
+                    filter.measurementUpdate(arma::conv_to<arma::vec>::from(convert(measurement.rBCc)),
+                                             arma::conv_to<arma::mat>::from(convert(measurement.covariance)),
+                                             field,
+                                             convert(balls.Hcw));
                 }
-            });
+                last_measurement_update_time = curr_time;
+            }
+        });
     }
 }  // namespace localisation
 }  // namespace module
