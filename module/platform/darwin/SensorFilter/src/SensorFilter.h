@@ -49,9 +49,9 @@ namespace platform {
             utility::math::filter::UKF<MotionModel> motionFilter;
 
             struct Config {
-                Config() : nominal_z(0.0f), motionFilter(), buttons() {}
+                Config() : motionFilter(), buttons(), footDown() {}
 
-                float nominal_z;
+                bool debug;
 
                 bool debug;
 
@@ -123,6 +123,13 @@ namespace platform {
                     Button() : debounceThreshold(0) {}
                     int debounceThreshold;
                 } buttons;
+
+
+                struct FootDown {
+                    FootDown() : fromLoad(true), certaintyThreshold(0.05) {}
+                    bool fromLoad;
+                    float certaintyThreshold;
+                } footDown;
             } config;
 
         private:
@@ -132,7 +139,7 @@ namespace platform {
             bool middleDown = false;
 
             // Our sensor for foot down
-            VirtualLoadSensor load_sensor;
+            VirtualLoadSensor<float> load_sensor;
 
             // World to foot in world rotation when the foot landed
             std::array<arma::vec3, 2> footlanding_rFWw;

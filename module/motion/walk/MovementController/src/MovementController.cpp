@@ -113,33 +113,24 @@ namespace motion {
                     Eigen::Matrix3d Rtworld = (Eigen::Affine3d(sensors.Htw)).rotation();
 
                     // World to support foot
-                    Eigen::Matrix3d Rsworld = Rts.transpose() * Rtworld;
+                    Eigen::Matrix3d Rworlds = Rtworld.transpose() * Rts;
 
                     // Dot product of z with identity z
-                    double alpha = std::acos(Rsworld(2, 2));
+                    double alpha = std::acos(Rworlds(2, 2));
 
-                    Eigen::Vector3d axis = Eigen::Vector3d::UnitZ().cross(Rsworld.col(2)).normalized();
+                    Eigen::Vector3d axis = Rworlds.col(2).cross(Eigen::Vector3d::UnitZ()).normalized();
 
                     // Axis angle is ground to support foot
-                    Eigen::Matrix3d Rsg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix();
-                    Eigen::Matrix3d Rtg = Rts * Rsg;
+                    Eigen::Matrix3d Rwg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix() * Rworlds;
+                    Eigen::Matrix3d Rtg = Rtworld * Rwg;
 
                     // Ground space assemble!
                     Eigen::Affine3d Htg;
-
                     Htg.linear()      = Rtg;
                     Htg.translation() = Hts.translation();
 
-                    // log("Check!:",
-                    //     ((Rtg * Eigen::Vector3d::UnitZ()) - (Rtworld * Eigen::Vector3d::UnitZ())).transpose());
-
-                    //---------------------------------------------------------------------------------------------
-                    //---------------------------------------------------------------------------------------------
-
-                    // log("world to torso z:",
-                    //     Rtworld.col(2).transpose(),
-                    //     "\nground to torso z:",
-                    //     Rtg.col(2).transpose());
+                    // ------------------------------------------------------
+                    // ------------------------------------------------------
 
                     // Calculate the next torso and next swing foot positions we are targeting
                     Eigen::Affine3d Ht_ng =
