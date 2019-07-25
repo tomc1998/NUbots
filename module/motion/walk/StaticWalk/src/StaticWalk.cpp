@@ -60,20 +60,19 @@ namespace motion {
             Eigen::Matrix3d Rtworld = Htworld.rotation();
 
             // World to support foot
-            Eigen::Matrix3d Rsworld = Rts.transpose() * Rtworld;
+            Eigen::Matrix3d Rworlds = Rtworld.transpose() * Rts;
 
             // Dot product of z with identity z
-            double alpha = std::acos(Rsworld(2, 2));
+            double alpha = std::acos(Rworlds(2, 2));
 
-            Eigen::Vector3d axis = Eigen::Vector3d::UnitZ().cross(Rsworld.col(2)).normalized();
+            Eigen::Vector3d axis = Rworlds.col(2).cross(Eigen::Vector3d::UnitZ()).normalized();
 
             // Axis angle is ground to support foot
-            Eigen::Matrix3d Rsg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix();
-            Eigen::Matrix3d Rtg = Rts * Rsg;
+            Eigen::Matrix3d Rwg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix() * Rworlds;
+            Eigen::Matrix3d Rtg = Rtworld * Rwg;
 
             // Ground space assemble!
             Eigen::Affine3d Htg;
-
             Htg.linear()      = Rtg;
             Htg.translation() = Hts.translation();
             return Htg;
@@ -130,6 +129,8 @@ namespace motion {
                               : Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse() * Htg;
 
                     Hwg.linear() = Eigen::Matrix3d::Identity();
+
+                    log("ground to swing:", Hwg.translation().transpose());
                 }
 
                 // When the time is over for this phase, begin the next phase
@@ -138,7 +139,7 @@ namespace motion {
                     start_phase = NUClear::clock::now();
                     // Change the state of the walk based on what the previous state was
                     switch (state) {
-                        case LEFT_LEAN: state = RIGHT_STEP; break;
+                        case LEFT_LEAN: state = LEFT_LEAN; break;
                         case RIGHT_STEP: {
                             // Store where support is relative to swing
                             // log("rightstep");
@@ -159,7 +160,7 @@ namespace motion {
                             Hwg.linear() = Eigen::Matrix3d::Identity();
                             state        = RIGHT_LEAN;
                         } break;
-                        case RIGHT_LEAN: state = LEFT_STEP; break;
+                        case RIGHT_LEAN: state = RIGHT_LEAN; break;
                         case LEFT_STEP: {
                             // Store where support is relative to swing
                             // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()
@@ -210,6 +211,8 @@ namespace motion {
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 
+                        log((Htworld.inverse() * Hts).translation().z());
+
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(
                             start_phase + phase_time, false, Ht_tg.matrix(), subsumptionId));
@@ -223,12 +226,25 @@ namespace motion {
                         Eigen::Affine3d Hts(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
                         Eigen::Affine3d Htworld(sensors.Htw);
 
+                        Eigen::Affine3d Htw(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
+
+
+                        // log("Support:",
+                        //     (Htworld.inverse() * Hts).translation().z(),
+                        //     "\nSwing:",
+                        //     (Htworld.inverse() * Htw).translation().z(),
+                        //     "Torso to swing:",
+                        //     Htw.translation().transpose(),
+                        //     "Torso to support:",
+                        //     Hts.translation().transpose());
+
+
                         Eigen::Affine3d Htg(getGroundSpace(Hts, Htworld));
 
                         Eigen::Vector3d rCTt(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0);
                         Eigen::Vector3d rCGg(Htg.inverse() * rCTt);
 
-                        Eigen::Vector3d rT_tGg(Eigen::Vector3d(x_offset, -y_offset, torso_height));
+                        Eigen::Vector3d rT_tGg(Eigen::Vector3d(x_offset, y_offset, torso_height));
 
                         rT_tGg = rT_tGg - (rCGg - Htg.inverse().translation());
 
