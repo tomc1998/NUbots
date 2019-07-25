@@ -82,8 +82,6 @@ namespace motion {
                     auto torso_time_left = duration_cast<duration<double>>(torso_target.timestamp - now).count();
                     auto swing_time_left = duration_cast<duration<double>>(foot_target.timestamp - now).count();
 
-                    const auto final_time = torso_target.timestamp;
-
                     // Retrieve the target matrices
                     Eigen::Affine3d Ht_tg(torso_target.Ht_tg);
                     Eigen::Affine3d Hw_tg(foot_target.Hw_tg);
@@ -124,6 +122,8 @@ namespace motion {
                     Eigen::Matrix3d Rwg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix() * Rworlds;
                     Eigen::Matrix3d Rtg = Rtworld * Rwg;
 
+                    log("\nRtg:\n", Rtg.matrix());
+
                     // Ground space assemble!
                     Eigen::Affine3d Htg;
                     Htg.linear()      = Rtg;
@@ -136,22 +136,33 @@ namespace motion {
                     Eigen::Affine3d Ht_ng =
                         torso_controller.next_torso(config.time_horizon, torso_time_left, Htg, Ht_tg);
 
-                    Eigen::Affine3d Hw_ng = foot_controller.next_swing(
-                        config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg, foot_target.lift);
+                    Eigen::Affine3d Hw_ng =
+                        foot_controller.next_swing(config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg);
 
                     // Perform IK for the support and swing feet based on the target torso position
                     Eigen::Affine3d Ht_nw_n = Ht_ng * Hw_ng.inverse();
+
+
+                    // log("\nMOVEMENT CONTROLLER LOGS:\n",
+                    //     "torso time left:",
+                    //     torso_time_left,
+                    //     "\nHt_tg:\n",
+                    //     convert(Ht_tg.matrix()),
+                    //     "\nGround space check:",
+                    //     ((Rtg * Eigen::Vector3d::UnitZ()) - (Rtworld * Eigen::Vector3d::UnitZ())).transpose(),
+                    //     "\nEND MOVEMENT CONTROLLER LOGS.");
+
+                    Eigen::Affine3d Ht_ns = (Ht_ng * Htg.inverse()) * Hts;
+
 
                     // ------------------------------------------------------
                     // ---------TESTING: REMOVING FOOT KINEMATICS------------
                     // ------------------------------------------------------
 
-                    // const Transform3D t_t = convert<double, 4, 4>(Ht_ng.matrix());
+                    const Transform3D t_t = convert(Ht_ns.matrix());
                     // Retrieve joint positions from inverse kinematics
-                    // auto joints = torso_target.is_right_foot_support ? calculateLegJoints(model, t_t,
-                    // LimbID::RIGHT_LEG)
-                    //                                                  : calculateLegJoints(model, t_t,
-                    //                                                  LimbID::LEFT_LEG);
+                    auto joints = torso_target.is_right_foot_support ? calculateLegJoints(model, t_t, LimbID::RIGHT_LEG)
+                                                                     : calculateLegJoints(model, t_t, LimbID::LEFT_LEG);
 
 
                     // ------------------------------------------------------
@@ -161,14 +172,14 @@ namespace motion {
                     // By using g here, we are assuming the support foot is flat on the ground,
                     // and if it's not it'll try to make it flat on the ground
 
-                    const Transform3D t_t         = convert<double, 4, 4>(Ht_tg.matrix());
-                    const Transform3D t_w         = convert<double, 4, 4>(Ht_nw_n.matrix());
-                    const Transform3D& left_foot  = torso_target.is_right_foot_support ? t_w : t_t;
-                    const Transform3D& right_foot = torso_target.is_right_foot_support ? t_t : t_w;
+                    // const Transform3D t_t         = convert(Ht_tg.matrix());
+                    // const Transform3D t_w         = convert(Ht_nw_n.matrix());
+                    // const Transform3D& left_foot  = torso_target.is_right_foot_support ? t_w : t_t;
+                    // const Transform3D& right_foot = torso_target.is_right_foot_support ? t_t : t_w;
 
 
-                    auto left_joints  = calculateLegJoints(model, left_foot, LimbID::LEFT_LEG);
-                    auto right_joints = calculateLegJoints(model, right_foot, LimbID::RIGHT_LEG);
+                    // auto left_joints  = calculateLegJoints(model, left_foot, LimbID::LEFT_LEG);
+                    // auto right_joints = calculateLegJoints(model, right_foot, LimbID::RIGHT_LEG);
 
                     auto foot_time =
                         time_point_cast<NUClear::clock::duration>(now + duration<double>(config.time_horizon));
@@ -176,7 +187,24 @@ namespace motion {
                     // Look through each servo
                     auto waypoints = std::make_unique<std::vector<ServoCommand>>();
 
-                    for (const auto& joint : left_joints) {
+                    // for (const auto& joint : left_joints) {
+                    //     // waypoints->emplace_back(
+                    //     //     foot_target.subsumption_id,
+                    //     //     NUClear::clock::time_point(NUClear::clock::duration(0)),
+                    //     //     joint.first,
+                    //     //     joint.second,
+                    //     //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
+                    //     //     100);
+                    //     waypoints->emplace_back(foot_target.subsumption_id,
+                    //                             torso_target.is_right_foot_support ? foot_time : final_time,
+                    //                             joint.first,
+                    //                             joint.second,
+                    //                             torso_target.is_right_foot_support ? w_gain : config.support_gain,
+                    //                             100);
+                    // }
+
+
+                    for (const auto& joint : joints) {
                         // waypoints->emplace_back(
                         //     foot_target.subsumption_id,
                         //     NUClear::clock::time_point(NUClear::clock::duration(0)),
@@ -185,71 +213,12 @@ namespace motion {
                         //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
                         //     100);
                         waypoints->emplace_back(foot_target.subsumption_id,
-                                                torso_target.is_right_foot_support ? foot_time : final_time,
-                                                joint.first,
-                                                joint.second,
-                                                torso_target.is_right_foot_support ? w_gain : config.support_gain,
-                                                100);
-                    }
-
-
-                    for (const auto& joint : right_joints) {
-                        // waypoints->emplace_back(
-                        //     foot_target.subsumption_id,
-                        //     NUClear::clock::time_point(NUClear::clock::duration(0)),
-                        //     joint.first,
-                        //     joint.second,
-                        //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
-                        //     100);
-                        waypoints->emplace_back(foot_target.subsumption_id,
-                                                torso_target.is_right_foot_support ? final_time : foot_time,
+                                                foot_time,
                                                 joint.first,
                                                 joint.second,
                                                 torso_target.is_right_foot_support ? config.support_gain : w_gain,
                                                 100);
                     }
-
-                    // for (const auto& joint : calculateLegJoints(model, left_foot, right_foot)) {
-
-                    //     LimbID limb           = LimbID::limbForServo(joint.first);
-                    //     float present         = sensors.servo[joint.first].present_position;
-                    //     float goal            = joint.second;
-                    //     float offset          = goal - present;
-                    //     float velocity        = offset / config.time_horizon;
-                    //     float projection_time = std::abs(config.projection_angle / velocity);
-
-                    //     if (limb == LimbID::RIGHT_LEG) {
-                    //         continue;
-                    //     }
-
-                    //     // If our target speed is not too slow, or too fast project our velocity
-                    //     float target      = goal;
-                    //     float target_time = config.time_horizon;
-                    //     if (std::abs(offset) > config.min_rotation && std::abs(offset) < config.projection_angle) {
-                    //         target      = present + velocity * projection_time;
-                    //         target_time = projection_time;
-                    //         log("success");
-                    //     }
-                    //     // Too small a movement go straight there
-                    //     else if (std::abs(offset) < config.min_rotation) {
-                    //         target_time = 0;
-                    //     }
-
-                    //     auto target_timepoint =
-                    //         time_point_cast<NUClear::clock::duration>(now + duration<double>(target_time));
-                    //     // Send a clear command
-                    //     waypoints->emplace_back(foot_target.subsumption_id,
-                    //                             NUClear::clock::time_point(NUClear::clock::duration(0)),
-                    //                             joint.first);
-                    //     waypoints->emplace_back(foot_target.subsumption_id,
-                    //                             target_timepoint,
-                    //                             joint.first,
-                    //                             target,
-                    //                             limb == LimbID::RIGHT_LEG && torso_target.is_right_foot_support
-                    //                                 ? config.support_gain
-                    //                                 : config.swing_gain,
-                    //                             100);
-                    // }
 
                     // Emit our locations to move to
                     emit(waypoints);

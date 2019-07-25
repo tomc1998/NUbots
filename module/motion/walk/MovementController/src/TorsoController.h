@@ -12,8 +12,7 @@ namespace motion {
             Eigen::Affine3d next_torso(const double& time_horizon,
                                        const double& time_left,
                                        const Eigen::Affine3d& Htg,
-                                       const Eigen::Affine3d& Ht_tg,
-                                       const bool& ratchet = true);
+                                       const Eigen::Affine3d& Ht_tg);
 
             struct {
                 double max_rotation;

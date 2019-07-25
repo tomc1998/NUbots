@@ -3,6 +3,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <nuclear>
 
 namespace module {
 namespace motion {
@@ -13,8 +14,7 @@ namespace motion {
             Eigen::Affine3d next_swing(const double& time_horizon,
                                        const double& time_left,
                                        const Eigen::Affine3d& Hwg,
-                                       const Eigen::Affine3d& Hw_tg,
-                                       bool lift);
+                                       const Eigen::Affine3d& Hw_tg);
 
             struct {
                 double step_height;

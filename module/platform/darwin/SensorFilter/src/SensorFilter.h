@@ -55,8 +55,6 @@ namespace platform {
 
                 bool debug;
 
-                bool debug;
-
                 struct MotionFilter {
                     MotionFilter() : velocityDecay(arma::fill::zeros), noise(), initial() {}
 

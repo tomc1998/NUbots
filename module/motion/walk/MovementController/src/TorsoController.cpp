@@ -18,9 +18,7 @@ namespace motion {
         Eigen::Affine3d TorsoController::next_torso(const double& time_horizon,
                                                     const double& time_left,
                                                     const Eigen::Affine3d& Htg,
-                                                    const Eigen::Affine3d& Ht_tg,
-                                                    const bool& ratchet) {
-
+                                                    const Eigen::Affine3d& Ht_tg) {
             // Interpolate towards target
             double factor = time_horizon / time_left;
 
@@ -37,87 +35,18 @@ namespace motion {
                                .toRotationMatrix()
                                .transpose();
 
-            return Hgn.inverse();
-
-            // NUClear::log("next target translation:\n",
-            //              Htg.inverse().translation().transpose(),
-            //              "\n",
-            //              Hgn.translation().transpose(),
-            //              "\n",
-            //              Ht_tg.inverse().translation().transpose(),
-            //              "\n");
-
-            //---------------------------------------------------------------
-            //------RATCHET--------------------------------------------------
-            //---------------------------------------------------------------
-
-            // Calculate his position and velocity and see if he hasn't moved as he should be
-            double new_rotation = std::abs(Eigen::AngleAxisd().fromRotationMatrix((Ht_tg * Hgn).rotation()).angle());
-            double old_rotation = std::abs(Eigen::AngleAxisd().fromRotationMatrix((Ht_tg * Hgo).rotation()).angle());
-            double old_rotation_dispacement =
-                std::abs(Eigen::AngleAxisd().fromRotationMatrix((Htg * Hgo).rotation()).angle());
-            double new_distance     = (Ht_tg * Hgn).translation().norm();
-            double old_distance     = (Ht_tg * Hgo).translation().norm();
-            double old_displacement = (Htg.inverse().translation() - Hgo.translation()).norm();
-
-            if (ratchet && old_displacement < config.max_translation && old_distance < new_distance
-                || old_rotation_dispacement < config.max_rotation && old_rotation < new_rotation) {
-
-                // Calculate ratchet to ground
-                Eigen::Affine3d Hgr = Htg.inverse();
-                if (old_displacement < config.max_translation && old_distance < new_distance) {
-                    Hgr.translation() = Hgo.translation();
-                    NUClear::log("translation ratchet");
-                }
-                else if (old_displacement < config.max_translation) {
-                    NUClear::log("Translation ratchet snapped");
-                }
-                if (old_rotation_dispacement < config.max_rotation && old_rotation < new_rotation) {
-                    Hgr.linear() = Hgo.linear();
-                    NUClear::log("rotation ratchet");
-                }
-                else if (old_rotation_dispacement < config.max_rotation) {
-                    NUClear::log("Rotation ratchet snapped");
-                }
-
-                // Debugging!
-                double current_rotation =
-                    std::abs(Eigen::AngleAxisd().fromRotationMatrix((Ht_tg * Htg.inverse()).rotation()).angle());
-                double current_distance = (Ht_tg * Htg.inverse()).translation().norm();
-                NUClear::log("Ratcheting",
-                             "v_o:",
-                             old_displacement,
-                             "v_n:",
-                             config.max_translation,
-                             "d_o:",
-                             old_distance,
-                             "d_n:",
-                             new_distance,
-                             "d_c:",
-                             current_distance,
-                             "w_o:",
-                             old_rotation_dispacement,
-                             "w_n:",
-                             config.max_rotation,
-                             "r_o:",
-                             old_rotation,
-                             "r_n:",
-                             new_rotation,
-                             "c_r:",
-                             current_rotation);
-
-                return next_torso(time_horizon, time_left, Hgr.inverse(), Ht_tg, false);
-            }
-            else if (ratchet) {
-                NUClear::log("No Ratcheting");
-            }
-            else if (ratchet
-                     && (old_displacement < config.max_translation || old_rotation_dispacement < config.max_rotation)) {
-                NUClear::log("A ratchet snapped");
-            }
-
-            // Store our old value
-            Hgo = Hgn;
+            // NUClear::log("\nTORSO CONTROLLER LOG:\n",
+            //              "time_horizon:",
+            //              time_horizon,
+            //              "\ntime_left",
+            //              time_left,
+            //              "\nrTGg * (1-factor):",
+            //              (Htg.inverse().translation() * (1.0 - factor)).transpose(),
+            //              "\nrT_tGg * factor:",
+            //              (Ht_tg.inverse().translation() * factor).transpose(),
+            //              "\nHgn\n",
+            //              Hgn.matrix(),
+            //              "\nEND TORSO CONTROLLER LOG.\n");
 
             return Hgn.inverse();
         }
