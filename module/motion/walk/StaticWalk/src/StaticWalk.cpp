@@ -130,7 +130,10 @@ namespace motion {
 
                     Hwg.linear() = Eigen::Matrix3d::Identity();
 
-                    log("ground to swing:", Hwg.translation().transpose());
+                    // Specify that the distance between the feet must be stance_width
+                    Hwg.translation().y() = state == LEFT_LEAN ? stance_width : -stance_width;
+                    // log(stance_width);
+                    // log("ground to swing:", Hwg.translation().transpose());
                 }
 
                 // When the time is over for this phase, begin the next phase
@@ -139,7 +142,10 @@ namespace motion {
                     start_phase = NUClear::clock::now();
                     // Change the state of the walk based on what the previous state was
                     switch (state) {
-                        case LEFT_LEAN: state = LEFT_LEAN; break;
+                        case LEFT_LEAN:
+                            // log("right step");
+                            state = RIGHT_STEP;
+                            break;
                         case RIGHT_STEP: {
                             // Store where support is relative to swing
                             // log("rightstep");
@@ -158,9 +164,16 @@ namespace motion {
                             // swingfoot space to ground space
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse() * Htg;
                             Hwg.linear() = Eigen::Matrix3d::Identity();
-                            state        = RIGHT_LEAN;
+                            // log("Hwg y:", Hwg.translation().y());
+                            // Specify that the distance between the feet must be stance_width
+                            Hwg.translation().y() = stance_width;
+                            // log("right lean");
+                            state = RIGHT_LEAN;
                         } break;
-                        case RIGHT_LEAN: state = RIGHT_LEAN; break;
+                        case RIGHT_LEAN:
+                            // log("left step");
+                            state = LEFT_STEP;
+                            break;
                         case LEFT_STEP: {
                             // Store where support is relative to swing
                             // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()
@@ -181,7 +194,10 @@ namespace motion {
 
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse() * Htg;
                             Hwg.linear() = Eigen::Matrix3d::Identity();
-
+                            // log("Hwg y:", Hwg.translation().y());
+                            // Specify that the distance between the feet must be stance_width
+                            Hwg.translation().y() = -stance_width;
+                            // log("left lean");
                             state = LEFT_LEAN;
                         } break;
                         default: break;
@@ -211,7 +227,7 @@ namespace motion {
 
                         Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 
-                        log((Htworld.inverse() * Hts).translation().z());
+                        // log((Htworld.inverse() * Hts).translation().z());
 
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(

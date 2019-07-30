@@ -27,8 +27,7 @@ namespace motion {
                                                    const double& time_left,
                                                    const Eigen::Affine3d& Hwg,
                                                    const Eigen::Affine3d& Hw_tg) {
-            Eigen::Vector3d rWGg   = Hwg.inverse().translation();
-            Eigen::Vector3d rW_tGg = Hw_tg.inverse().translation();
+            // NUClear::log("\nHwg\n", Hwg.matrix(), "\n\nHw_tg\n", Hw_tg.matrix());
 
             double factor = time_horizon / time_left;
 
@@ -45,12 +44,12 @@ namespace motion {
             //---------------------------------------------------------------
             //---------------------------------------------------------------
 
-            double current_distance_target = rWW_tw_t.norm();
+            // double current_distance_target = rWW_tw_t.norm();
 
-            // If we are very close to the target, just go to the target directly
-            if (current_distance_target < config.well_width) {
-                rNGg = rW_tGg;
-            }
+            // // If we are very close to the target, just go to the target directly
+            // if (current_distance_target < config.well_width) {
+            //     rNGg = rW_tGg;
+            // }
 
             Eigen::Affine3d Hgn;
             Hgn.linear() = Eigen::Quaterniond(Hwg.rotation())

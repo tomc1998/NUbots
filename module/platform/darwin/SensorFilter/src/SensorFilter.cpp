@@ -445,44 +445,45 @@ namespace platform {
                     /************************************************
                      *            Foot down information             *
                      ************************************************/
-                    sensors->right_foot_down = true;
-                    sensors->left_foot_down  = true;
+                    // sensors->right_foot_down = true;
+                    // sensors->left_foot_down  = true;
 
-                    std::array<bool, 2> feet_down = {true};
-                    if (config.footDown.fromLoad) {
-                        // Use our virtual load sensor class to work out which feet are down
-                        feet_down = load_sensor.updateFeet(*sensors);
+                    // std::array<bool, 2> feet_down = {true};
+                    // if (config.footDown.fromLoad) {
+                    //     // Use our virtual load sensor class to work out which feet are down
+                    //     feet_down = load_sensor.updateFeet(*sensors);
 
-                        if (this->config.debug) {
-                            emit(graph("Sensor/Foot Down/Load/Left", load_sensor.state[1]));
-                            emit(graph("Sensor/Foot Down/Load/Right", load_sensor.state[0]));
-                        }
-                    }
-                    else {
-                        auto rightFootDisplacement = sensors->forward_kinematics[ServoID::R_ANKLE_ROLL].inverse()(2, 3);
-                        auto leftFootDisplacement  = sensors->forward_kinematics[ServoID::L_ANKLE_ROLL].inverse()(2, 3);
+                    //     if (this->config.debug) {
+                    //         emit(graph("Sensor/Foot Down/Load/Left", load_sensor.state[1]));
+                    //         emit(graph("Sensor/Foot Down/Load/Right", load_sensor.state[0]));
+                    //     }
+                    // }
+                    // else {
+                    //     auto rightFootDisplacement = sensors->forward_kinematics[ServoID::R_ANKLE_ROLL].inverse()(2,
+                    //     3); auto leftFootDisplacement  =
+                    //     sensors->forward_kinematics[ServoID::L_ANKLE_ROLL].inverse()(2, 3);
 
-                        if (rightFootDisplacement < leftFootDisplacement - config.footDown.certaintyThreshold) {
-                            feet_down[0] = true;
-                            feet_down[1] = false;
-                        }
-                        else if (leftFootDisplacement < rightFootDisplacement - config.footDown.certaintyThreshold) {
-                            feet_down[0] = false;
-                            feet_down[1] = true;
-                        }
-                        else {
-                            feet_down[0] = true;
-                            feet_down[1] = true;
-                        }
+                    //     if (rightFootDisplacement < leftFootDisplacement - config.footDown.certaintyThreshold) {
+                    //         feet_down[0] = true;
+                    //         feet_down[1] = false;
+                    //     }
+                    //     else if (leftFootDisplacement < rightFootDisplacement - config.footDown.certaintyThreshold) {
+                    //         feet_down[0] = false;
+                    //         feet_down[1] = true;
+                    //     }
+                    //     else {
+                    //         feet_down[0] = true;
+                    //         feet_down[1] = true;
+                    //     }
 
-                        if (this->config.debug) {
-                            emit(graph("Sensor/Foot Down/Z/Left", feet_down[1]));
-                            emit(graph("Sensor/Foot Down/Z/Right", feet_down[0]));
-                        }
-                    }
+                    //     if (this->config.debug) {
+                    //         emit(graph("Sensor/Foot Down/Z/Left", feet_down[1]));
+                    //         emit(graph("Sensor/Foot Down/Z/Right", feet_down[0]));
+                    //     }
+                    // }
 
-                    sensors->right_foot_down = feet_down[0];
-                    sensors->left_foot_down  = feet_down[1];
+                    // sensors->right_foot_down = feet_down[0];
+                    // sensors->left_foot_down  = feet_down[1];
 
                     /************************************************
                      *             Motion (IMU+Odometry)            *
