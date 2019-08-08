@@ -136,6 +136,19 @@ namespace motion {
                     Eigen::Affine3d Ht_ng =
                         torso_controller.next_torso(config.time_horizon, torso_time_left, Htg, Ht_tg);
 
+                    // log("\ntime horizon:",
+                    //     config.time_horizon,
+                    //     "\nswing time left:",
+                    //     swing_time_left,
+                    //     "\nHtw.i\n",
+                    //     Htw.inverse().matrix(),
+                    //     "\nHtg\n",
+                    //     Htg.matrix(),
+                    //     "\nHwg\n",
+                    //     (Htw.inverse() * Htg).matrix(),
+                    //     "\nHw_tg\n",
+                    //     Hw_tg.matrix());
+
                     Eigen::Affine3d Hw_ng =
                         foot_controller.next_swing(config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg);
 

@@ -26,10 +26,10 @@
 #include "utility/input/ServoID.h"
 #include "utility/math/comparison.h"
 #include "utility/math/matrix/Transform3D.h"
+#include "utility/motion/ForwardKinematics.h"
 #include "utility/motion/InverseKinematics.h"
 #include "utility/nusight/NUhelpers.h"
 #include "utility/support/yaml_expression.h"
-
 
 namespace module {
 namespace motion {
@@ -51,55 +51,53 @@ namespace motion {
         using message::motion::FootTarget;
         using message::motion::KinematicsModel;
         using utility::math::almost_equal;
+        using utility::motion::kinematics::calculateGroundSpace;
         using utility::motion::kinematics::calculateLegJoints;
         using utility::motion::kinematics::legPoseValid;
         using utility::nusight::graph;
 
-        Eigen::Affine3d StaticWalk::getGroundSpace(Eigen::Affine3d& Hts, Eigen::Affine3d& Htworld) {
-            Eigen::Matrix3d Rts     = Hts.rotation();
-            Eigen::Matrix3d Rtworld = Htworld.rotation();
+        Eigen::Affine3d StaticWalk::getLeanTarget(const Eigen::Affine3d& Hts,
+                                                  double y_offset_local,
+                                                  const Eigen::Affine3d Htg,
+                                                  const Eigen::Vector3d& rCTt) {
+            Eigen::Vector3d rCGg(Htg.inverse() * rCTt);
 
-            // World to support foot
-            Eigen::Matrix3d Rworlds = Rtworld.transpose() * Rts;
+            Eigen::Vector3d rT_tGg(Eigen::Vector3d(x_offset, y_offset_local, torso_height));
 
-            // Dot product of z with identity z
-            double alpha = std::acos(Rworlds(2, 2));
+            rT_tGg = rT_tGg - (rCGg - Htg.inverse().translation());
 
-            Eigen::Vector3d axis = Rworlds.col(2).cross(Eigen::Vector3d::UnitZ()).normalized();
+            Eigen::Affine3d Hgt_t;
+            Hgt_t.linear()      = Eigen::Matrix3d::Identity();
+            Hgt_t.translation() = rT_tGg;
+            Hgt_t.translation() = Eigen::Vector3d(x_offset, y_offset_local, torso_height);
 
-            // Axis angle is ground to support foot
-            Eigen::Matrix3d Rwg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix() * Rworlds;
-            Eigen::Matrix3d Rtg = Rtworld * Rwg;
+            Eigen::Affine3d Ht_tg = Hgt_t.inverse();
 
-            // Ground space assemble!
-            Eigen::Affine3d Htg;
-            Htg.linear()      = Rtg;
-            Htg.translation() = Hts.translation();
-            return Htg;
+            return Ht_tg;
         }
 
 
         StaticWalk::StaticWalk(std::unique_ptr<NUClear::Environment> environment)
             : Reactor(std::move(environment)), subsumptionId(size_t(this) * size_t(this) - size_t(this)) {
-
             on<Configuration>("StaticWalk.yaml").then([this](const Configuration& config) {
+                // Set initial conditions
                 start_phase = NUClear::clock::now();
                 state       = INITIAL;
+                start_right_lean =
+                    config["start_right_lean"].as<bool>();  // TODO: dynamically determine which foot to start on
 
                 // Use configuration here from file StaticWalk.yaml
-                torso_height = config["torso_height"].as<double>();
-                stance_width = config["stance_width"].as<double>();
-                phase_time   = std::chrono::milliseconds(config["phase_time"].as<int>());
-
-                double x_speed   = config["test"]["x_speed"].as<double>();
-                double y_speed   = config["test"]["y_speed"].as<double>();
-                double angle     = config["test"]["angle"].as<double>();
-                start_right_lean = config["test"]["start_right_lean"].as<bool>();
-
-                y_offset = config["y_offset"].as<double>();
-                x_offset = config["x_offset"].as<double>();
-
+                torso_height   = config["torso_height"].as<double>();
+                stance_width   = config["stance_width"].as<double>();
+                phase_time     = std::chrono::milliseconds(config["phase_time"].as<int>());
+                y_offset       = config["y_offset"].as<double>();
+                x_offset       = config["x_offset"].as<double>();
                 rotation_limit = config["rotation_limit"].as<Expression>();
+
+                // Set test parameters from config
+                double x_speed = config["test"]["x_speed"].as<double>();
+                double y_speed = config["test"]["y_speed"].as<double>();
+                double angle   = config["test"]["angle"].as<double>();
 
                 // Multiply by 2 so that the lean states are accounted for
                 time = std::chrono::duration_cast<std::chrono::duration<double>>(phase_time).count() * 2;
@@ -111,93 +109,55 @@ namespace motion {
                                                                   const WalkCommand& walkcommand) {
                 // INITIAL state occurs only as the first state in the walk to set the matrix Hff_s
                 if (state == INITIAL) {
-                    // Set the matrix Hff_s and change the state to a lean
-
-
+                    // Set the state based on the config
                     state = start_right_lean ? RIGHT_LEAN : LEFT_LEAN;
-                    // log(state);
-                    // state = LEFT_LEAN;
 
+                    // Get swing foot in ground space
                     Eigen::Affine3d Hts = state == LEFT_LEAN
                                               ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL])
                                               : Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
-                    Eigen::Affine3d Htworld(sensors.Htw);
-                    Eigen::Affine3d Htg = getGroundSpace(Hts, Htworld);
+
+                    Eigen::Affine3d Htg(calculateGroundSpace(Hts, Eigen::Affine3d(sensors.Htw).inverse()));
 
                     Hwg = state == LEFT_LEAN
                               ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse() * Htg
                               : Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse() * Htg;
 
+                    // Force the foot to be in ground space. TODO: check this
                     Hwg.linear() = Eigen::Matrix3d::Identity();
-
-                    // Specify that the distance between the feet must be stance_width
-                    Hwg.translation().y() = state == LEFT_LEAN ? stance_width : -stance_width;
-                    // log(stance_width);
-                    // log("ground to swing:", Hwg.translation().transpose());
                 }
 
                 // When the time is over for this phase, begin the next phase
                 if (NUClear::clock::now() > start_phase + phase_time) {
                     // Reset the start phase time for the new phase
                     start_phase = NUClear::clock::now();
+
                     // Change the state of the walk based on what the previous state was
                     switch (state) {
-                        case LEFT_LEAN:
-                            // log("right step");
-                            state = RIGHT_STEP;
-                            break;
+                        case LEFT_LEAN: state = RIGHT_STEP; break;
                         case RIGHT_STEP: {
-                            // Store where support is relative to swing
-                            // log("rightstep");
-
-                            Eigen::Affine3d Hts(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
-                            Eigen::Affine3d Htworld(sensors.Htw);
-                            Eigen::Affine3d Htg = getGroundSpace(Hts, Htworld);
-
-
-                            // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()
-                            //         * (sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
-                            // or
-                            // supportfoot (left) to swingfoot
-                            // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL])
-                            //*(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse();
-                            // swingfoot space to ground space
+                            // Store where support is relative to swing in ground space
+                            Eigen::Affine3d Htg(
+                                calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
+                                                     Eigen::Affine3d(sensors.Htw).inverse()));
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse() * Htg;
+
+                            // Force the foot into ground space. TODO: check this
                             Hwg.linear() = Eigen::Matrix3d::Identity();
-                            // log("Hwg y:", Hwg.translation().y());
-                            // Specify that the distance between the feet must be stance_width
-                            Hwg.translation().y() = stance_width;
-                            // log("right lean");
+
                             state = RIGHT_LEAN;
                         } break;
-                        case RIGHT_LEAN:
-                            // log("left step");
-                            state = LEFT_STEP;
-                            break;
+                        case RIGHT_LEAN: state = LEFT_STEP; break;
                         case LEFT_STEP: {
-                            // Store where support is relative to swing
-                            // Hff_s = (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse()
-                            //        * (sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
-
-
-                            // swingfoot (left) to supportfoot (right)
-                            // log("leftstep");
-                            // Support foot (right) to swingfoot (left)
-                            // This works better than other way.
-                            // Hff_s = (sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse()
-                            //         * (sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
-
-                            Eigen::Affine3d Hts(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
-                            Eigen::Affine3d Htworld(sensors.Htw);
-                            Eigen::Affine3d Htg = getGroundSpace(Hts, Htworld);
-
-
+                            // Store where support is relative to swing in ground space
+                            Eigen::Affine3d Htg(
+                                calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
+                                                     Eigen::Affine3d(sensors.Htw).inverse()));
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse() * Htg;
+
+                            // Force the foot into ground space. TODO: check this
                             Hwg.linear() = Eigen::Matrix3d::Identity();
-                            // log("Hwg y:", Hwg.translation().y());
-                            // Specify that the distance between the feet must be stance_width
-                            Hwg.translation().y() = -stance_width;
-                            // log("left lean");
+
                             state = LEFT_LEAN;
                         } break;
                         default: break;
@@ -207,75 +167,36 @@ namespace motion {
                 // Put our COM over the correct foot or move foot to target, based on which state we are in
                 switch (state) {
                     case LEFT_LEAN: {
-                        // Create matrix for TorsoTarget
-                        Eigen::Affine3d Hts(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
-                        Eigen::Affine3d Htworld(sensors.Htw);
-
-                        Eigen::Affine3d Htg(getGroundSpace(Hts, Htworld));
-
-                        Eigen::Vector3d rCTt(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0);
-                        Eigen::Vector3d rCGg(Htg.inverse() * rCTt);
-
-                        Eigen::Vector3d rT_tGg(Eigen::Vector3d(x_offset, y_offset, torso_height));
-
-                        rT_tGg = rT_tGg - (rCGg - Htg.inverse().translation());
-
-                        Eigen::Affine3d Hgt_t;
-                        Hgt_t.linear()      = Eigen::Matrix3d::Identity();
-                        Hgt_t.translation() = rT_tGg;
-                        Hgt_t.translation() = Eigen::Vector3d(x_offset, -y_offset, torso_height);
-
-                        Eigen::Affine3d Ht_tg = Hgt_t.inverse();
-
-                        // log((Htworld.inverse() * Hts).translation().z());
-
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(
-                            start_phase + phase_time, false, Ht_tg.matrix(), subsumptionId));
+                            start_phase + phase_time,
+                            false,
+                            getLeanTarget(
+                                Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
+                                -y_offset,
+                                calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
+                                                     Eigen::Affine3d(sensors.Htw).inverse()),
+                                Eigen::Vector3d(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0))
+                                .matrix(),
+                            subsumptionId));
 
-
+                        // Keep the swing foot in place relative to support, with ground rotation
                         emit(std::make_unique<FootTarget>(
                             start_phase + phase_time, true, Hwg.matrix(), false, subsumptionId));
                     } break;
                     case RIGHT_LEAN: {
-                        // Create matrix for TorsoTarget
-                        Eigen::Affine3d Hts(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
-                        Eigen::Affine3d Htworld(sensors.Htw);
-
-                        Eigen::Affine3d Htw(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
-
-
-                        // log("Support:",
-                        //     (Htworld.inverse() * Hts).translation().z(),
-                        //     "\nSwing:",
-                        //     (Htworld.inverse() * Htw).translation().z(),
-                        //     "Torso to swing:",
-                        //     Htw.translation().transpose(),
-                        //     "Torso to support:",
-                        //     Hts.translation().transpose());
-
-
-                        Eigen::Affine3d Htg(getGroundSpace(Hts, Htworld));
-
-                        Eigen::Vector3d rCTt(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0);
-                        Eigen::Vector3d rCGg(Htg.inverse() * rCTt);
-
-                        Eigen::Vector3d rT_tGg(Eigen::Vector3d(x_offset, y_offset, torso_height));
-
-                        rT_tGg = rT_tGg - (rCGg - Htg.inverse().translation());
-
-                        // rT_tGg.y() = rT_tGg.y() > y_limit ? y_limit : rT_tGg.y();
-
-                        Eigen::Affine3d Hgt_t;
-                        Hgt_t.linear()      = Eigen::Matrix3d::Identity();
-                        Hgt_t.translation() = rT_tGg;
-                        Hgt_t.translation() = Eigen::Vector3d(x_offset, y_offset, torso_height);
-
-                        Eigen::Affine3d Ht_tg = Hgt_t.inverse();
-
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(
-                            start_phase + phase_time, true, Ht_tg.matrix(), subsumptionId));
+                            start_phase + phase_time,
+                            true,
+                            getLeanTarget(
+                                Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
+                                y_offset,
+                                calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
+                                                     Eigen::Affine3d(sensors.Htw).inverse()),
+                                Eigen::Vector3d(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0))
+                                .matrix(),
+                            subsumptionId));
 
                         // Maintain left foot position while the torso moves over the right foot
                         emit(std::make_unique<FootTarget>(

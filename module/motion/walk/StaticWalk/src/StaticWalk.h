@@ -12,11 +12,8 @@ namespace motion {
         class StaticWalk : public NUClear::Reactor {
 
         private:
-            // Transform from support foot to swing foot
-            // Eigen::Affine3d Hwg;
+            // Transform from ground to swing foot
             Eigen::Transform<double, 3, Eigen::Affine, Eigen::DontAlign> Hwg;
-            // Ground space method
-            Eigen::Affine3d getGroundSpace(Eigen::Affine3d& Hts, Eigen::Affine3d& Htworld);
             // The states that the robots enters to complete the steps
             enum State { INITIAL, LEFT_LEAN, RIGHT_STEP, RIGHT_LEAN, LEFT_STEP } state;
             // The time each phase takes to complete
@@ -33,6 +30,12 @@ namespace motion {
             double time;
             double rotation_limit;
             size_t subsumptionId;
+
+            // Returns ground to torso target for specified lean
+            Eigen::Affine3d getLeanTarget(const Eigen::Affine3d& Hts,
+                                          double y_offset_local,
+                                          const Eigen::Affine3d Htg,
+                                          const Eigen::Vector3d& rCTt);
 
         public:
             /// @brief Called by the powerplant to build and setup the StaticWalk reactor.

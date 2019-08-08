@@ -39,23 +39,28 @@ namespace motion {
             Eigen::Vector3d rWW_tw_t = Hw_tw.translation();
             Eigen::Vector3d rNW_tw_t =
                 rWW_tw_t + (Eigen::Vector3d(f_x(rWW_tw_t), 0, f_z(rWW_tw_t)).normalized() * factor * rWW_tw_t.norm());
+            Eigen::Vector3d vector(Eigen::Vector3d(f_x(rWW_tw_t), 0, f_z(rWW_tw_t)).normalized() * factor
+                                   * rWW_tw_t.norm());
+            rNW_tw_t.y() = rWW_tw_t.y() * factor;
+            // NUClear::log(vector.x(), ", ", vector.z());
             Eigen::Vector3d rNGg = Hw_tg.inverse() * rNW_tw_t;
 
             //---------------------------------------------------------------
             //---------------------------------------------------------------
 
-            // double current_distance_target = rWW_tw_t.norm();
+            double current_distance_target = rWW_tw_t.norm();
 
-            // // If we are very close to the target, just go to the target directly
-            // if (current_distance_target < config.well_width) {
-            //     rNGg = rW_tGg;
-            // }
+            // If we are very close to the target, just go to the target directly
+            if (current_distance_target < config.well_width) {
+                rNGg = Hw_tg.inverse().translation();
+            }
 
             Eigen::Affine3d Hgn;
             Hgn.linear() = Eigen::Quaterniond(Hwg.rotation())
                                .slerp(factor, Eigen::Quaterniond(Hw_tg.rotation()))
                                .toRotationMatrix()
                                .transpose();
+            // Hgn.linear()      = Eigen::Matrix3d::Identity();
             Hgn.translation() = rNGg;
 
             return Hgn.inverse();
