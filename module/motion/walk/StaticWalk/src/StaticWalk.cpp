@@ -208,7 +208,8 @@ namespace motion {
                         // walkcommand is (x,y,theta) where x,y is velocity in m/s and theta is angle in
                         // radians/seconds
                         // log("rightstep2");
-                        double rotation = walkcommand.command.z();
+                        double rotation =
+                            walkcommand.command.z() > rotation_limit ? rotation_limit : walkcommand.command.z();
                         Eigen::Vector3d translation =
                             Eigen::Vector3d(walkcommand.command.x(), walkcommand.command.y(), 0);
                         Eigen::Affine3d Haf;
@@ -218,7 +219,7 @@ namespace motion {
                         // If there is no rotation to be done, just set the translation to x and y, and set the
                         // rotation to identity
                         // rotation check is to stop the robot from turning outside acceptable parameters
-                        if (rotation == 0 || rotation > rotation_limit) {
+                        if (rotation == 0) {
                             Eigen::Vector3d target = translation * time;
                             target.y() -= stance_width;
                             Eigen::Affine3d Hfa;
@@ -260,7 +261,8 @@ namespace motion {
                     case LEFT_STEP: {
                         // walkcommand is (x,y,theta) where x,y is velocity in m/s and theta is angle in
                         // radians/seconds
-                        double rotation = walkcommand.command.z();
+                        double rotation =
+                            walkcommand.command.z() > rotation_limit ? rotation_limit : walkcommand.command.z();
                         Eigen::Vector3d translation =
                             Eigen::Vector3d(walkcommand.command.x(), walkcommand.command.y(), 0);
                         Eigen::Affine3d Haf;
