@@ -35,24 +35,28 @@ namespace motion {
             //-------------VECTOR FIELD--------------------------------------
             //---------------------------------------------------------------
 
-            Eigen::Affine3d Hw_tw    = Hw_tg * Hwg.inverse();
-            Eigen::Vector3d rWW_tw_t = Hw_tw.translation();
-            Eigen::Vector3d rNW_tw_t =
-                rWW_tw_t + (Eigen::Vector3d(f_x(rWW_tw_t), 0, f_z(rWW_tw_t)).normalized() * factor * rWW_tw_t.norm());
-            Eigen::Vector3d vector(Eigen::Vector3d(f_x(rWW_tw_t), 0, f_z(rWW_tw_t)).normalized() * factor
-                                   * rWW_tw_t.norm());
-            rNW_tw_t.y() = rWW_tw_t.y() * factor;
+            // Hw_gg is ground to ground-swing-target space. That is, the space the swing target is in, but with ground rotation.
+            Eigen::Affine3d Hw_gg = Hw_tg;
+            Hw_gg.linear() = Eigen::Matrix3d::Identity();
+
+            Eigen::Affine3d Hw_gw    = Hw_gg * Hwg.inverse();
+            Eigen::Vector3d rWW_gw_g = Hw_gw.translation();
+            Eigen::Vector3d rNW_gw_g =
+                rWW_gw_g + (Eigen::Vector3d(f_x(rWW_gw_g), 0, f_z(rWW_gw_g)).normalized() * factor * rWW_gw_g.norm());
+            Eigen::Vector3d vector(Eigen::Vector3d(f_x(rWW_gw_g), 0, f_z(rWW_gw_g)).normalized() * factor
+                                   * rWW_gw_g.norm());
+            rNW_gw_g.y() = rWW_gw_g.y() * factor;
             // NUClear::log(vector.x(), ", ", vector.z());
-            Eigen::Vector3d rNGg = Hw_tg.inverse() * rNW_tw_t;
+            Eigen::Vector3d rNGg = Hw_gg.inverse() * rNW_gw_g;
 
             //---------------------------------------------------------------
             //---------------------------------------------------------------
 
-            double current_distance_target = rWW_tw_t.norm();
+            double current_distance_target = rWW_gw_g.norm();
 
             // If we are very close to the target, just go to the target directly
             if (current_distance_target < config.well_width) {
-                rNGg = Hw_tg.inverse().translation();
+                rNGg = Hw_gg.inverse().translation();
             }
 
             Eigen::Affine3d Hgn;
