@@ -56,26 +56,85 @@ namespace motion {
         using utility::motion::kinematics::legPoseValid;
         using utility::nusight::graph;
 
-        Eigen::Affine3d StaticWalk::getLeanTarget(const Eigen::Affine3d& Hts,
+
+        // Retrieves the target for the lean based on support foot, ground foot, and COM location
+        Eigen::Affine3d StaticWalk::getLeanTarget(const Eigen::Affine3d Hts,
                                                   double y_offset_local,
                                                   const Eigen::Affine3d Htg,
-                                                  const Eigen::Vector3d& rCTt) {
-            Eigen::Vector3d rCGg(Htg.inverse() * rCTt);
+                                                  const Eigen::Vector3d rCTt) {
+            // This will be the returned matrix, ground to torso target
+            Eigen::Affine3d Ht_tg;
 
-            Eigen::Vector3d rT_tGg(Eigen::Vector3d(x_offset, y_offset_local, torso_height));
+            // Need to find how much to move the torso to so that the COM is over the foot
+            Eigen::Vector3d rSTt(Hts.translation());
+            Eigen::Vector3d rSCt(rCTt - rSTt);
 
-            rT_tGg = rT_tGg - (rCGg - Htg.inverse().translation());
+            // Don't use COM z, use torso height config variable instead
+            Eigen::Vector3d rGTt(Eigen::Vector3d(rSCt.x(), rSCt.y(), -torso_height));
 
-            Eigen::Affine3d Hgt_t;
-            Hgt_t.linear()      = Eigen::Matrix3d::Identity();
-            Hgt_t.translation() = rT_tGg;
-            Hgt_t.translation() = Eigen::Vector3d(x_offset, y_offset_local, torso_height);
-
-            Eigen::Affine3d Ht_tg = Hgt_t.inverse();
+            // Set the rotation relative to the ground as the identity matrix,
+            // since we want the torso to rotate into ground space or stay in ground space
+            Ht_tg.linear(Eigen::Matrix3d::Identity());
 
             return Ht_tg;
         }
 
+        // Find the foot target for the step
+        Eigen::Affine3d StaticWalk::getFootTarget(const enum State state, const Eigen::Vector3d walkcommand) {
+            // walkcommand is (x,y,theta) where x,y is velocity in m/s and theta is angle in
+            // radians/seconds
+            // log("rightstep2");
+
+            // Clamp the rotation to rotation limit
+            double rotation =
+                walkcommand.z() > rotation_limit ? rotation_limit : walkcommand.z();
+
+            // Set translation vector, z component is 0
+            Eigen::Vector3d translation =
+                Eigen::Vector3d(walkcommand.command.x(), walkcommand.command.y(), 0);
+
+            // Foot to foot target matrix
+            Eigen::Affine3d Haf;
+            Eigen::Vector3d rASs;
+
+            // TODO: write stop function and proper check
+            // If there is no rotation to be done, just set the translation to x and y, and set the
+            // rotation to identity
+            // rotation check is to stop the robot from turning outside acceptable parameters
+            if (rotation == 0) {
+                Eigen::Vector3d target = translation * time;
+                target.y() = state == LEFT_STEP ? target.y() + stance_width : target.y() - stance_width;
+
+                Eigen::Affine3d Hfa;
+                Hfa.linear()      = Eigen::Matrix3d::Identity();
+                Hfa.translation() = target;
+                Haf               = Hfa.inverse();
+            }
+
+            // If there is rotation, adjust the translation and rotation for this
+            else {
+                //  Multiply by phase time so that we are moving in x metres/second and y metres/second
+                double radius          = translation.norm() / std::abs(rotation);
+                Eigen::Vector3d origin = Eigen::Vector3d(-translation.y(), translation.x(), 0);
+                origin /= rotation;
+                Eigen::Vector3d end_point =
+                    rotation > 0 ? (translation / std::abs(rotation)) * std::sin(std::abs(rotation) * time)
+                                        + (origin * (1 - std::cos(std::abs(rotation) * time)))
+                                    : (translation / std::abs(rotation)) * std::sin(std::abs(rotation) * time)
+                                        + (origin * (1 - std::cos(std::abs(rotation) * time)));
+                Eigen::Vector3d target = end_point;
+                target.y() -= stance_width;
+
+                const Eigen::Matrix3d Raf(Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX())
+                                            * Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY())
+                                            * Eigen::AngleAxisd(rotation, Eigen::Vector3d::UnitZ()));
+
+                Haf.linear()      = Raf;
+                Haf.translation() = -rASs;
+            }
+
+            return Haf;
+        }
 
         StaticWalk::StaticWalk(std::unique_ptr<NUClear::Environment> environment)
             : Reactor(std::move(environment)), subsumptionId(size_t(this) * size_t(this) - size_t(this)) {
@@ -102,6 +161,7 @@ namespace motion {
                 // Multiply by 2 so that the lean states are accounted for
                 time = std::chrono::duration_cast<std::chrono::duration<double>>(phase_time).count() * 2;
 
+                // Emit the walk command
                 emit(std::make_unique<WalkCommand>(subsumptionId, Eigen::Vector3d(x_speed, y_speed, angle)));
             });
 
@@ -205,108 +265,30 @@ namespace motion {
 
 
                     case RIGHT_STEP: {
-                        // walkcommand is (x,y,theta) where x,y is velocity in m/s and theta is angle in
-                        // radians/seconds
-                        // log("rightstep2");
-                        double rotation =
-                            walkcommand.command.z() > rotation_limit ? rotation_limit : walkcommand.command.z();
-                        Eigen::Vector3d translation =
-                            Eigen::Vector3d(walkcommand.command.x(), walkcommand.command.y(), 0);
-                        Eigen::Affine3d Haf;
-                        Eigen::Vector3d rASs;
-
-                        // TODO: write stop function and proper check
-                        // If there is no rotation to be done, just set the translation to x and y, and set the
-                        // rotation to identity
-                        // rotation check is to stop the robot from turning outside acceptable parameters
-                        if (rotation == 0) {
-                            Eigen::Vector3d target = translation * time;
-                            target.y() -= stance_width;
-                            Eigen::Affine3d Hfa;
-                            Hfa.linear()      = Eigen::Matrix3d::Identity();
-                            Hfa.translation() = target;
-                            Haf               = Hfa.inverse();
-                        }
-
-
-                        // If there is rotation, adjust the translation and rotation for this
-                        else {
-                            //  Multiply by phase time so that we are moving in x metres/second and y metres/second
-                            double radius          = translation.norm() / std::abs(rotation);
-                            Eigen::Vector3d origin = Eigen::Vector3d(-translation.y(), translation.x(), 0);
-                            origin /= rotation;
-                            Eigen::Vector3d end_point =
-                                rotation > 0 ? (translation / std::abs(rotation)) * std::sin(std::abs(rotation) * time)
-                                                   + (origin * (1 - std::cos(std::abs(rotation) * time)))
-                                             : (translation / std::abs(rotation)) * std::sin(std::abs(rotation) * time)
-                                                   + (origin * (1 - std::cos(std::abs(rotation) * time)));
-                            Eigen::Vector3d target = end_point;
-                            target.y() -= stance_width;
-
-                            const Eigen::Matrix3d Raf(Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX())
-                                                      * Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY())
-                                                      * Eigen::AngleAxisd(rotation, Eigen::Vector3d::UnitZ()));
-
-                            Haf.linear()      = Raf;
-                            Haf.translation() = -rASs;
-                        }
-
                         // Move the right foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(
-                            start_phase + phase_time, true, Haf.matrix(), true, subsumptionId));
+                            start_phase + phase_time,
+                            true,
+                            getFootTarget(
+                                RIGHT_STEP,
+                                Eigen::Vector3d(walkcommand.command)
+                            ).matrix(),
+                            true,
+                            subsumptionId));
                         // log("rightstep");
                     } break;
 
-
                     case LEFT_STEP: {
-                        // walkcommand is (x,y,theta) where x,y is velocity in m/s and theta is angle in
-                        // radians/seconds
-                        double rotation =
-                            walkcommand.command.z() > rotation_limit ? rotation_limit : walkcommand.command.z();
-                        Eigen::Vector3d translation =
-                            Eigen::Vector3d(walkcommand.command.x(), walkcommand.command.y(), 0);
-                        Eigen::Affine3d Haf;
-                        Eigen::Vector3d rASs;
-
-                        // If there is no rotation to be done, just set the translation to x and y, and set the
-                        // rotation to identity
-                        if (rotation == 0 || rotation > rotation_limit) {
-                            Eigen::Vector3d target = translation * time;
-                            target.y() += stance_width;
-                            Eigen::Affine3d Hfa;
-                            Hfa.linear()      = Eigen::Matrix3d::Identity();
-                            Hfa.translation() = target;
-                            Haf               = Hfa.inverse();
-                        }
-
-                        // If there is rotation, adjust the translation and rotation for this
-                        else {
-                            //  Multiply by phase time so that we are moving in x metres/second and y metres/second
-                            double radius          = translation.norm() / std::abs(rotation);
-                            Eigen::Vector3d origin = Eigen::Vector3d(-translation.y(), translation.x(), 0);
-                            origin /= rotation;
-                            Eigen::Vector3d end_point =
-                                rotation > 0 ? (translation / std::abs(rotation)) * std::sin(std::abs(rotation) * time)
-                                                   + (origin * (1 - std::cos(std::abs(rotation) * time)))
-                                             : (translation / std::abs(rotation)) * std::sin(std::abs(rotation) * time)
-                                                   + (origin * (1 - std::cos(std::abs(rotation) * time)));
-                            Eigen::Vector3d target = end_point;
-                            target.y() += stance_width / 2;
-
-                            // change target from torso space to support foot space
-                            rASs =
-                                Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse() * target;
-
-                            const Eigen::Matrix3d Raf(Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX())
-                                                      * Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY())
-                                                      * Eigen::AngleAxisd(rotation, Eigen::Vector3d::UnitZ()));
-
-                            Haf.linear()      = Raf;
-                            Haf.translation() = -rASs;
-                        }
                         // Move the left foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(
-                            start_phase + phase_time, false, Haf.matrix(), true, subsumptionId));
+                            start_phase + phase_time,
+                            false,
+                            getFootTarget(
+                                LEFT_STEP,
+                                Eigen::Vector3d(walkcommand.command)
+                            ).matrix(),
+                            true,
+                            subsumptionId));
                         // log("leftstep");
                     } break;
                     default: break;

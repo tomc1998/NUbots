@@ -18,6 +18,7 @@
 #include "utility/motion/InverseKinematics.h"
 #include "utility/nusight/NUhelpers.h"
 #include "utility/support/yaml_expression.h"
+#include "utility/motion/ForwardKinematics.h"
 
 namespace module {
 namespace motion {
@@ -34,6 +35,7 @@ namespace motion {
         using utility::math::matrix::Transform3D;
         using utility::motion::kinematics::calculateLegJoints;
         using utility::support::Expression;
+        using utility::motion::kinematics::calculateGroundSpace;
 
         MovementController::MovementController(std::unique_ptr<NUClear::Environment> environment)
             : Reactor(std::move(environment)) {
@@ -53,11 +55,6 @@ namespace motion {
                 // Constant for f_x and f_z
                 foot_controller.config.c =
                     (std::pow(s, 2 / s) * std::pow(h, 1 / s) * std::pow(s * h + (s * s * h), -1 / s)) / w;
-
-                // Torso controller config
-                torso_controller.config.max_translation = cfg["torso"]["max_translation"].as<Expression>();
-                torso_controller.config.max_rotation    = cfg["torso"]["max_rotation"].as<Expression>();
-
 
                 // Motion controller config
                 config.time_horizon     = cfg["time_horizon"].as<Expression>();
@@ -101,36 +98,8 @@ namespace motion {
                                               ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL])
                                               : Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
 
-                    //---------------------------------------------------------------------------------------------
-                    //----------------------- CREATE GROUND SPACE -------------------------------------------------
-                    //---------------------------------------------------------------------------------------------
-
-                    // // Retrieve rotations needed for creating the space
-                    // // support foot to torso rotation, and world to torso rotation
-                    Eigen::Matrix3d Rts     = Hts.rotation();
-                    Eigen::Matrix3d Rtworld = (Eigen::Affine3d(sensors.Htw)).rotation();
-
-                    // World to support foot
-                    Eigen::Matrix3d Rworlds = Rtworld.transpose() * Rts;
-
-                    // Dot product of z with identity z
-                    double alpha = std::acos(Rworlds(2, 2));
-
-                    Eigen::Vector3d axis = Rworlds.col(2).cross(Eigen::Vector3d::UnitZ()).normalized();
-
-                    // Axis angle is ground to support foot
-                    Eigen::Matrix3d Rwg = Eigen::AngleAxisd(alpha, axis).toRotationMatrix() * Rworlds;
-                    Eigen::Matrix3d Rtg = Rtworld * Rwg;
-
-                    // log("\nRtg:\n", Rtg.matrix());
-
-                    // Ground space assemble!
-                    Eigen::Affine3d Htg;
-                    Htg.linear()      = Rtg;
-                    Htg.translation() = Hts.translation();
-
-                    // ------------------------------------------------------
-                    // ------------------------------------------------------
+                    // Get ground space
+                    Eigen::Affine3d Htg(calculateGroundSpace(Hts, Eigen::Affine3d(sensors.Htw)));
 
                     // Calculate the next torso and next swing foot positions we are targeting
                     Eigen::Affine3d Ht_ng =
@@ -203,13 +172,6 @@ namespace motion {
                     auto waypoints = std::make_unique<std::vector<ServoCommand>>();
 
                     for (const auto& joint : left_joints) {
-                        // waypoints->emplace_back(
-                        //     foot_target.subsumption_id,
-                        //     NUClear::clock::time_point(NUClear::clock::duration(0)),
-                        //     joint.first,
-                        //     joint.second,
-                        //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
-                        //     100);
                         waypoints->emplace_back(foot_target.subsumption_id,
                                                 now,
                                                 joint.first,
@@ -220,13 +182,6 @@ namespace motion {
 
 
                     for (const auto& joint : right_joints) {
-                        // waypoints->emplace_back(
-                        //     foot_target.subsumption_id,
-                        //     NUClear::clock::time_point(NUClear::clock::duration(0)),
-                        //     joint.first,
-                        //     joint.second,
-                        //     torso_target.is_right_foot_support ? config.swing_gain : config.support_gain,
-                        //     100);
                         waypoints->emplace_back(foot_target.subsumption_id,
                                                 now,
                                                 joint.first,
@@ -238,7 +193,7 @@ namespace motion {
                     // Emit our locations to move to
                     emit(waypoints);
                 });
-        }  // namespace walk
+        }
     }      // namespace walk
 }  // namespace motion
 }  // namespace module
