@@ -15,10 +15,10 @@
 #include "utility/input/LimbID.h"
 #include "utility/input/ServoID.h"
 #include "utility/math/matrix/Transform3D.h"
+#include "utility/motion/ForwardKinematics.h"
 #include "utility/motion/InverseKinematics.h"
 #include "utility/nusight/NUhelpers.h"
 #include "utility/support/yaml_expression.h"
-#include "utility/motion/ForwardKinematics.h"
 
 namespace module {
 namespace motion {
@@ -33,9 +33,9 @@ namespace motion {
         using utility::input::LimbID;
         using utility::input::ServoID;
         using utility::math::matrix::Transform3D;
+        using utility::motion::kinematics::calculateGroundSpace;
         using utility::motion::kinematics::calculateLegJoints;
         using utility::support::Expression;
-        using utility::motion::kinematics::calculateGroundSpace;
 
         MovementController::MovementController(std::unique_ptr<NUClear::Environment> environment)
             : Reactor(std::move(environment)) {
@@ -64,14 +64,33 @@ namespace motion {
                 config.support_gain    = cfg["gains"]["support_gain"].as<Expression>();
                 config.swing_gain      = cfg["gains"]["swing_gain"].as<Expression>();
                 config.swing_lean_gain = cfg["gains"]["swing_lean_gain"].as<Expression>();
-            });
 
+                torso_message = Eigen::Matrix4d::Zero();
+            });
 
             on<Trigger<Sensors>, With<KinematicsModel>, With<FootTarget>, With<TorsoTarget>>().then(
                 [this](const Sensors& sensors,
                        const KinematicsModel& model,
                        const FootTarget& foot_target,
                        const TorsoTarget& torso_target) {
+                    Eigen::Affine3d Hts;
+                    Eigen::Affine3d Htw;
+
+                    if (torso_message != torso_target.Ht_tg) {
+                        torso_message = torso_target.Ht_tg;
+
+                        Hts = torso_target.is_right_foot_support
+                                  ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL])
+                                  : Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
+                        Htw = torso_target.is_right_foot_support
+                                  ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL])
+                                  : Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
+                    }
+                    else {
+                        Hts = new_Hts;
+                        Htw = new_Htw;
+                    }
+
                     using namespace std::chrono;
 
                     // Set the time now so the calculations are consistent across the methods
@@ -83,23 +102,20 @@ namespace motion {
                     Eigen::Affine3d Ht_tg(torso_target.Ht_tg);
                     Eigen::Affine3d Hw_tg(foot_target.Hw_tg);
 
+                    // Convert world to torso transform to assumed world to torso transform
+                    Eigen::Affine3d Htw_true = torso_target.is_right_foot_support
+                                                   ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL])
+                                                   : Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
+                    Eigen::Affine3d Htworld = (Htw * Htw_true.inverse()) * Eigen::Affine3d(sensors.Htw);
+
                     // If we are within time_horizon of our target, we always make time_horizon our target
                     torso_time_left = torso_time_left < config.time_horizon ? config.time_horizon : torso_time_left;
                     swing_time_left = swing_time_left < config.time_horizon ? config.time_horizon : swing_time_left;
 
                     double w_gain = foot_target.lift ? config.swing_gain : config.swing_lean_gain;
 
-                    // Find the support foot to torso transformation matrix, and the swing foot to torso transformation
-                    // matrix
-                    Eigen::Affine3d Hts = torso_target.is_right_foot_support
-                                              ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL])
-                                              : Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]);
-                    Eigen::Affine3d Htw = torso_target.is_right_foot_support
-                                              ? Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL])
-                                              : Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]);
-
                     // Get ground space
-                    Eigen::Affine3d Htg(calculateGroundSpace(Hts, Eigen::Affine3d(sensors.Htw)));
+                    Eigen::Affine3d Htg(calculateGroundSpace(Hts, Htworld));
 
                     // Calculate the next torso and next swing foot positions we are targeting
                     Eigen::Affine3d Ht_ng =
@@ -136,6 +152,10 @@ namespace motion {
 
                     Eigen::Affine3d Ht_ns = (Ht_ng * Htg.inverse()) * Hts;
 
+                    // Eigen::Vector3d (x, y, z)
+
+                    // Hts * rCSs
+                    //
 
                     // ------------------------------------------------------
                     // ---------TESTING: REMOVING FOOT KINEMATICS------------
@@ -192,8 +212,11 @@ namespace motion {
 
                     // Emit our locations to move to
                     emit(waypoints);
+
+                    new_Hts = Ht_ns;
+                    new_Htw = Ht_nw_n;
                 });
         }
-    }      // namespace walk
+    }  // namespace walk
 }  // namespace motion
 }  // namespace module

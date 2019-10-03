@@ -32,10 +32,13 @@ namespace motion {
             size_t subsumptionId;
 
             // Returns ground to torso target for specified lean
-            Eigen::Affine3d getLeanTarget(const Eigen::Affine3d& Hts,
+            Eigen::Affine3d getLeanTarget(const Eigen::Affine3d Hts,
                                           double y_offset_local,
                                           const Eigen::Affine3d Htg,
-                                          const Eigen::Vector3d& rCTt);
+                                          const Eigen::Vector3d rCTt);
+
+            // Returns ground to foot target for specified step
+            Eigen::Affine3d getFootTarget(const enum State state, const Eigen::Vector3d walkcommand);
 
         public:
             /// @brief Called by the powerplant to build and setup the StaticWalk reactor.

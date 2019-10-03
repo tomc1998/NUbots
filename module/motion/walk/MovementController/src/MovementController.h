@@ -25,6 +25,9 @@ namespace motion {
                 double projection_angle;
                 double min_rotation;
             } config;
+            Eigen::Affine3d torso_target;
+            Eigen::Affine3d new_Hts;
+            Eigen::Affine3d new_Htw;
         };
     }  // namespace walk
 }  // namespace motion
