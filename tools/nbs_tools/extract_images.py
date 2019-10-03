@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 
 import os
 import json
@@ -19,9 +18,18 @@ def run(in_file, out_path, **kwargs):
 
     output_path = os.path.join(out_path, os.path.basename(os.path.splitext(in_file)[0]))
     os.makedirs(output_path, exist_ok=True)
-
+    image_count = 0
+    MoCap_count = 0
+    Rigid_count = 0
     for packet in decoder.decode(in_file):
+        if packet.type == "message.input.MotionCapture":
+            MoCap_count += 1
+            print("message.input.MotionCapture")
+        if packet.type == "message.input.MotionCapture.RigidBody":
+            Rigid_count += 1
+            print("Message.input.MotionCapture.RigidBody")
         if packet.type == "message.output.CompressedImage":
+            image_count += 1
             with open(os.path.join(output_path, "{}_{:012d}.jpg".format(packet.msg.name, packet.timestamp)), "wb") as f:
                 f.write(packet.msg.data)
             with open(os.path.join(output_path, "{}_{:012d}.json".format(packet.msg.name, packet.timestamp)), "w") as f:
@@ -45,3 +53,6 @@ def run(in_file, out_path, **kwargs):
                     indent=4,
                     sort_keys=True,
                 )
+        print("image_count:",image_count)
+        print("MoCap_count:",MoCap_count)
+        print("Rigid_count:",Rigid_count)

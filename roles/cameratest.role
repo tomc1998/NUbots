@@ -4,6 +4,7 @@ nuclear_role(
   extension::FileWatcher
   support::SignalCatcher
   support::logging::ConsoleLogHandler
+
   # This must come first as it emits config which many roles depend on (e.g. SensorFilter, WalkEngine)
   motion::KinematicsConfiguration
   support::configuration::NetworkConfiguration
@@ -14,4 +15,7 @@ nuclear_role(
   support::NUsight
   output::ImageCompressor
   support::configuration::SoccerConfig
+  # Image capture stuff
+  support::logging::DataLogging
+  input::NatNet
 )
