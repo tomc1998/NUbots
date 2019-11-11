@@ -572,16 +572,25 @@ namespace platform {
                     // Gives us the quaternion representation
                     const auto& o = motionFilter.get();
 
+                    // Alias quaternion results for simplicity
+                    float qw = o[MotionModel::QW], qx = o[MotionModel::QX], qy = o[MotionModel::QY],
+                          qz = o[MotionModel::QZ];
+
                     // Map from world to torso coordinates (Rtw)
                     Eigen::Affine3d Hwt;
-                    Hwt.linear() = Eigen::Quaterniond(
-                                       o[MotionModel::QW], o[MotionModel::QX], o[MotionModel::QY], o[MotionModel::QZ])
-                                       .toRotationMatrix();
+                    Hwt.linear()      = Eigen::Quaterniond(qw, qx, qy, qz).toRotationMatrix();
                     Hwt.translation() = Eigen::Vector3d(o[MotionModel::PX], o[MotionModel::PY], o[MotionModel::PZ]);
                     sensors->Htw      = Hwt.inverse().matrix();
 
                     // Integrate gyro to get angular positions
-                    theta += o.rows(MotionModel::WX, MotionModel::WZ) * 1.0 / 90.0;
+                    // theta += o.rows(MotionModel::WX, MotionModel::WZ) * 1.0 / 90.0;
+
+                    // Calculate roll
+                    theta[0] = atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
+                    // Calculate pitch
+                    theta[1] = asin(2 * (qw * qy - qz * qx));
+                    // Calculate yaw
+                    theta[2] = atan2(2 * (qw * qx), 1 - 2 * (qx * qx + qy * qy));
 
                     sensors->angular_position = convert(theta);
 

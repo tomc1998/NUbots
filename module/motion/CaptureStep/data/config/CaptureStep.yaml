@@ -1,0 +1,4 @@
+# Desired torso height
+z0: 0.45
+# Threshold for distance from zmp to transition to double support
+dzmp: 0.03
