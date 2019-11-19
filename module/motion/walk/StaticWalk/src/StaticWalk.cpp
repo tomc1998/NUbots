@@ -3,24 +3,12 @@
 #include <Eigen/Geometry>
 #include <vector>
 #include "extension/Configuration.h"
-#include "message/input/Sensors.h"
-#include "message/motion/FootTarget.h"
-#include "message/motion/TorsoTarget.h"
-#include "message/motion/WalkCommand.h"
-#include "utility/behaviour/Action.h"
-#include "utility/input/LimbID.h"
-#include "utility/input/ServoID.h"
-#include "utility/math/comparison.h"
-#include "utility/math/matrix/Transform3D.h"
-
-#include "extension/Configuration.h"
-
 #include "message/behaviour/ServoCommand.h"
 #include "message/input/Sensors.h"
 #include "message/motion/FootTarget.h"
 #include "message/motion/KinematicsModel.h"
 #include "message/motion/TorsoTarget.h"
-
+#include "message/motion/WalkCommand.h"
 #include "utility/behaviour/Action.h"
 #include "utility/input/LimbID.h"
 #include "utility/input/ServoID.h"
@@ -36,26 +24,22 @@ namespace motion {
     namespace walk {
 
         using extension::Configuration;
+        using message::behaviour::ServoCommand;
         using message::input::Sensors;
         using message::motion::FootTarget;
+        using message::motion::KinematicsModel;
         using message::motion::TorsoTarget;
         using message::motion::WalkCommand;
         using utility::behaviour::RegisterAction;
         using utility::input::LimbID;
         using utility::input::ServoID;
-        using utility::math::matrix::Transform3D;
-        using utility::support::Expression;
-
-        using message::behaviour::ServoCommand;
-        using message::input::Sensors;
-        using message::motion::FootTarget;
-        using message::motion::KinematicsModel;
         using utility::math::almost_equal;
+        using utility::math::matrix::Transform3D;
         using utility::motion::kinematics::calculateGroundSpace;
         using utility::motion::kinematics::calculateLegJoints;
         using utility::motion::kinematics::legPoseValid;
         using utility::nusight::graph;
-
+        using utility::support::Expression;
 
         // Retrieves the target for the lean based on support foot, ground foot, and COM location
         Eigen::Affine3d StaticWalk::getLeanTarget(const Eigen::Affine3d Hts,
@@ -66,16 +50,29 @@ namespace motion {
             Eigen::Affine3d Ht_tg;
 
             // Need to find how much to move the torso to so that the COM is over the foot
+            // Get the vector from torso to support in torso space
+            // Then get the vector from CoM to support foot in torso space
             Eigen::Vector3d rSTt(Hts.translation());
-            Eigen::Vector3d rSCt(rCTt - rSTt);
+            Eigen::Vector3d rSCt(rSTt - rCTt);
 
-            // Don't use COM z, use torso height config variable instead
-            Eigen::Vector3d rGTt(Eigen::Vector3d(rSCt.x(), rSCt.y(), -torso_height));
+            // Going from support foot to the torso, we add on the CoM to torso vector
+            // If the CoM is on the torso, this will move the torso target to above the foot
+            // If CoM is closer to the foot than the torso, the torso will not move the whole way to the support foot
+            // If CoM is further away than the torso to the foot, the torso will move past the foot to land the CoM on
+            // the foot
+            Eigen::Vector3d rT_tSt = Eigen::Vector3d(-rSTt + rSCt);
+
+            // Fix up the vector using configuration variables. We want to set the height to our defined torso height
+            // that we want to robot to move to. The offsets set the CoM inside the support polygon rather than on the
+            // edge, since the support foot is measured from the ankle servo which is at the back of the foot.
+            rT_tSt.z() = torso_height;
+            // rT_tSt.x() += x_offset;
+            // rT_tSt.y() += y_offset;
 
             // Set the rotation relative to the ground as the identity matrix,
             // since we want the torso to rotate into ground space or stay in ground space
             Ht_tg.linear()      = Eigen::Matrix3d::Identity();
-            Ht_tg.translation() = rGTt;
+            Ht_tg.translation() = -rT_tSt;
 
             return Ht_tg;
         }
