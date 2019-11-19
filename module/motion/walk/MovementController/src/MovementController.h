@@ -22,12 +22,7 @@ namespace motion {
                 double support_gain;
                 double swing_gain;
                 double swing_lean_gain;
-                double projection_angle;
-                double min_rotation;
             } config;
-            Eigen::Affine3d torso_target;
-            Eigen::Affine3d new_Hts;
-            Eigen::Affine3d new_Htw;
         };
     }  // namespace walk
 }  // namespace motion

@@ -7,12 +7,6 @@ foot:
   # well_width must be an even number
   well_width: 0.004
 
-torso:
-  # The largest rotation allowed in a single horizon before snapping the ratchet
-  max_rotation: 10 * pi / 180
-  # The largest translation allowed in a single horizon before snapping the ratchet
-  max_translation: 0.10
-
 # Gain for the support and swing legs
 gains:
   support_gain: 15
@@ -21,7 +15,3 @@ gains:
 
 # How far in the future we are sending the movements (seconds)
 time_horizon: 0.05
-
-projection_angle: 10 * pi / 180
-
-min_rotation: pi / 180
