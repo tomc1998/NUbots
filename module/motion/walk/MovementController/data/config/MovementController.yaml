@@ -4,8 +4,8 @@ foot:
   # How steep the foot comes down to its target
   step_steep: 2
   # Size of the well near the target
-  # Well_width must be an even number
-  well_width: 0.005
+  # well_width must be an even number
+  well_width: 0.004
 
 torso:
   # The largest rotation allowed in a single horizon before snapping the ratchet
@@ -25,6 +25,3 @@ time_horizon: 0.05
 projection_angle: 10 * pi / 180
 
 min_rotation: pi / 180
-
-
-
