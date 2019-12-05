@@ -243,11 +243,11 @@ namespace platform {
                     sensors.accelerometer.x = -9.8 * std::sin(bodyTilt);
                     sensors.accelerometer.y = 0.0;
                     sensors.accelerometer.z = -9.8 * std::cos(bodyTilt);
-                    sensors.timestamp       = NUClear::clock::now();
+                    sensors.timestamp = NUClear::clock::now();
 
                     // Add some noise so that sensor fusion doesnt converge to a singularity
                     auto sensors_message = std::make_unique<DarwinSensors>(sensors);
-                    addNoise(sensors_message);
+                    //addNoise(sensors_message);
 
                     // Send our nicely computed sensor data out to the world
                     emit(std::move(sensors_message));

@@ -12,10 +12,10 @@ namespace motion {
          *
          * @param time_horizon Time into the future with which we project the next position to
          * @param time_left The amount of time remaining until we should hit our target
-         * @param Htg homogeneous transfrom from ground space to current torso space
+         * @param Htg homogeneous transform from ground space to current torso space
          * @param Ht_tg homogeneous transform from ground space to our target torso space
          *
-         * @return Hng homogeneous transfrom from ground space to the horizon torso space (next torso space)
+         * @return Hng homogeneous transform from ground space to the horizon torso space (next torso space)
          */
         Eigen::Affine3d TorsoController::next_torso(const double& time_horizon,
                                                     const double& time_left,
@@ -34,7 +34,7 @@ namespace motion {
                                .slerp(factor, Eigen::Quaterniond(Ht_tg.rotation()))
                                .toRotationMatrix()
                                .transpose();
-
+            // Hgn.linear() = Htg.rotation().transpose();
             return Hgn.inverse();
         }
 

@@ -69,10 +69,12 @@ namespace motion {
             // rT_tSt.x() += x_offset;
             // rT_tSt.y() += y_offset;
 
+            Eigen::Vector3d rT_tGt = (Htg.rotation() * (Htg.inverse() * Hts).translation()) + rT_tSt;
+
             // Set the rotation relative to the ground as the identity matrix,
             // since we want the torso to rotate into ground space or stay in ground space
             Ht_tg.linear()      = Eigen::Matrix3d::Identity();
-            Ht_tg.translation() = -rT_tSt;
+            Ht_tg.translation() = Eigen::Vector3d(0, 0, -torso_height);
 
             return Ht_tg;
         }
@@ -110,7 +112,6 @@ namespace motion {
             // If there is rotation, adjust the translation and rotation for this
             else {
                 //  Multiply by phase time so that we are moving in x metres/second and y metres/second
-                double radius          = translation.norm() / std::abs(rotation);
                 Eigen::Vector3d origin = Eigen::Vector3d(-translation.y(), translation.x(), 0);
                 origin /= rotation;
                 Eigen::Vector3d end_point =
@@ -271,7 +272,7 @@ namespace motion {
                                                               .matrix(),
                                                           true,
                                                           subsumptionId));
-                        // log("rightstep");
+                        //log("rightstep");
                     } break;
 
                     case LEFT_STEP: {
@@ -285,7 +286,7 @@ namespace motion {
                                                               .matrix(),
                                                           true,
                                                           subsumptionId));
-                        // log("leftstep");
+                        //log("leftstep");
                     } break;
                     default: break;
                 }

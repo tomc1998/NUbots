@@ -6,6 +6,10 @@ namespace motion {
 
         // Returns x-position of vector field. See vectorfield.py for graphical representation of the vector field
         double FootController::f_x(const Eigen::Vector3d& pos) {
+            // Prevent divide by zero error with 0 position
+            if (pos.x() == 0) {
+                return 0;
+            }
             return (-pos.x() / std::abs(pos.x()))
                    * std::exp(-std::abs(std::pow(config.c * pos.x(), -config.step_steep)));
         }
@@ -82,7 +86,7 @@ namespace motion {
                                .slerp(factor, Eigen::Quaterniond(Hw_tg.rotation()))
                                .toRotationMatrix()
                                .transpose();
-            // Hgn.linear()      = Eigen::Matrix3d::Identity();
+//            Hgn.linear()      = Hwg.rotation().transpose();
             Hgn.translation() = rNGg;
 
             return Hgn.inverse();
