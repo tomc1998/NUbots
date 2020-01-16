@@ -78,3 +78,5 @@ tags
 *.nbs
 *.json
 *.jpg
+
+*.nbs*

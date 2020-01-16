@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
+import nbs_tools.extract_images
 import nbs_tools.json
 import nbs_tools.stats
-import nbs_tools.extract_images
+import nbs_tools.video
 import nbs_tools.extract_images_MoCap
 import nbs_tools.extract_MoCap
 
@@ -15,11 +16,17 @@ def register(command):
     nbs_tools.json.register(subcommands.add_parser("json"))
     nbs_tools.stats.register(subcommands.add_parser("stats"))
     nbs_tools.extract_images.register(subcommands.add_parser("extract_images"))
+    nbs_tools.video.register(subcommands.add_parser("video"))
     nbs_tools.extract_images_MoCap.register(subcommands.add_parser("extract_images_MoCap"))
     nbs_tools.extract_MoCap.register(subcommands.add_parser("extract_MoCap"))
 
 
 def run(nbs_command, **kwargs):
-    {"stats": nbs_tools.stats.run, "json": nbs_tools.json.run, "extract_images": nbs_tools.extract_images.run, "extract_images_MoCap": nbs_tools.extract_images_MoCap.run, "extract_MoCap": nbs_tools.extract_MoCap.run}[
-        nbs_command
-    ](**kwargs)
+    {
+        "stats": nbs_tools.stats.run,
+        "json": nbs_tools.json.run,
+        "extract_images": nbs_tools.extract_images.run,
+        "video": nbs_tools.video.run,
+        "extract_images_MoCap": nbs_tools.extract_images_MoCap.run,
+        "extract_MoCap":nbs_tools.extract_MoCap.run,
+    }[nbs_command](**kwargs)
