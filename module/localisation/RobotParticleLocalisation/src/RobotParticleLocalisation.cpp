@@ -113,7 +113,7 @@ namespace localisation {
                     arma::mat22 pos_cov   = Hfw_xy * convert(s.position_cov) * Hfw_xy.t();
                     arma::mat33 state_cov = arma::eye(3, 3);
                     state_cov.submat(0, 0, 1, 1) = pos_cov;
-                    state_cov(2, 2)              = s.heading_var;
+                    state_cov(2, 2) = s.heading_var;
                     cov.push_back(state_cov);
                 }
                 filter.resetAmbiguous(states, cov, n_particles);
@@ -136,7 +136,7 @@ namespace localisation {
             leftSide.position     = Eigen::Vector2d(start_state[0], start_state[1]);
             leftSide.position_cov = Eigen::Vector2d::Constant(0.5).asDiagonal();
             leftSide.heading      = start_state[2];
-            leftSide.heading_var  = 0.005;
+            leftSide.heading_var  = start_variance[2];
 
             reset->hypotheses.push_back(leftSide);
             ResetRobotHypotheses::Self rightSide;
@@ -144,7 +144,7 @@ namespace localisation {
             rightSide.position     = Eigen::Vector2d(start_state[0], -start_state[1]);
             rightSide.position_cov = Eigen::Vector2d::Constant(0.5).asDiagonal();
             rightSide.heading      = -start_state[2];
-            rightSide.heading_var  = 0.005;
+            rightSide.heading_var  = start_variance[2];
 
             reset->hypotheses.push_back(rightSide);
             emit<Scope::DELAY>(reset, std::chrono::seconds(1));
