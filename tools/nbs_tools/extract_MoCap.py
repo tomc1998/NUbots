@@ -1,43 +1,55 @@
 
-import os
 import json
-from . import decoder
+import os
+
+from tqdm import tqdm
+
+from .nbs import Decoder
 
 
 def register(command):
-    command.help = "Decode an nbs file and extract any MoCap data into json files"
+    command.help = "Decode an nbs file and extract any Motion Capture data into json files"
 
     # Command arguments
-    command.add_argument("in_file", metavar="in_file", help="The nbs file to extract MoCap from")
     command.add_argument(
-        "out_path", nargs="?", default=os.getcwd(), metavar="out_path", help="The folder to extract the json files into"
+        "files", metavar="files", nargs="+", help="The nbs files to extract the Motion Capture data from"
     )
+    command.add_argument("--output", "-o", nargs="?", default=os.getcwd(), help="The folder to extract the Motion Capture data into")
 
 
-def run(in_file, out_path, **kwargs):
+def run(files, output, **kwargs):
 
-    output_path = os.path.join(out_path, os.path.basename(os.path.splitext(in_file)[0]))
-    os.makedirs(output_path, exist_ok=True)
-    for packet in decoder.decode(in_file):
-        if packet.type == "message.input.MotionCapture":
-            RigBod = packet.msg.rigidBodies[0]
-            with open(os.path.join(output_path, "{}_{:012d}.json".format(packet.msg.name, packet.timestamp)), "w") as f:
-                # Data goes here
-                json.dump(
-                    {
-                        "time_stamp": packet.timestamp,
-                        "position": [RigBod.position.x, RigBod.position.y, RigBod.position.z],
-                        "rotation": [RigBod.rotation.x, RigBod.rotation.y, RigBod.rotation.z, RigBod.rotation.t],
-                        "tracking_valid": RigBod.trackingValid,
-                        "lens": {
-                            "projection": packet.msg.lens.projection,
-                            "focal_length": packet.msg.lens.focal_length,
-                            "centre": [0, 0],
-                            "fov": packet.msg.lens.fov.x,
+    os.makedirs(output, exist_ok=True)
+    count = 0
+    decoder = Decoder(*files)
+    with tqdm(total=len(decoder), unit="B", unit_scale=True, dynamic_ncols=True) as progress:
+        for packet in decoder:
+
+            # Update the progress bar
+            progress.n = decoder.bytes_read()
+            progress.update(0)
+
+            if packet.type == "message.input.MotionCapture":
+                count += 1
+                print(count)
+                RigBod = packet.msg.rigidBodies[0]
+                with open(
+                    os.path.join(
+                        output,
+                        "{:04d}.json".format(
+                            count
+                        ),
+                    ),
+                    "w",
+                ) as f:
+                    json.dump(
+                        {
+                            "time_stamp": packet.timestamp,
+                            "position": [RigBod.position.x, RigBod.position.y, RigBod.position.z],
+                            "rotation": [RigBod.rotation.x, RigBod.rotation.y, RigBod.rotation.z, RigBod.rotation.t],
+                            "tracking_valid": RigBod.trackingValid,
                         },
-                    },
-                    f,
-                    indent=4,
-                    sort_keys=True,
-                )
-            #print(RigBod.position)
+                        f,
+                        indent=4,
+                        sort_keys=True,
+                    )
