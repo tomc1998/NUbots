@@ -92,8 +92,7 @@ namespace motion {
             Eigen::Vector3d translation = Eigen::Vector3d(walkcommand.x(), walkcommand.y(), 0);
 
             // Foot to foot target matrix
-            Eigen::Affine3d Haf;
-            Eigen::Vector3d rASs;
+            Eigen::Affine3d Htf;
 
             // TODO: write stop function and proper check
             // If there is no rotation to be done, just set the translation to x and y, and set the
@@ -103,10 +102,10 @@ namespace motion {
                 Eigen::Vector3d target = translation * time;
                 target.y()             = state == LEFT_STEP ? target.y() + stance_width : target.y() - stance_width;
 
-                Eigen::Affine3d Hfa;
-                Hfa.linear()      = Eigen::Matrix3d::Identity();
-                Hfa.translation() = target;
-                Haf               = Hfa.inverse();
+                Eigen::Affine3d Hft;
+                Hft.linear()      = Eigen::Matrix3d::Identity();
+                Hft.translation() = target;
+                Htf               = Hft.inverse();
             }
 
             // If there is rotation, adjust the translation and rotation for this
@@ -122,15 +121,15 @@ namespace motion {
                 Eigen::Vector3d target = end_point;
                 target.y() -= stance_width;
 
-                const Eigen::Matrix3d Raf(Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX())
+                const Eigen::Matrix3d Rtf(Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX())
                                           * Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY())
                                           * Eigen::AngleAxisd(rotation, Eigen::Vector3d::UnitZ()));
 
-                Haf.linear()      = Raf;
-                Haf.translation() = -rASs;
+                Htf.linear()      = Rtf;
+                Htf.translation() = -Rtf * target;
             }
 
-            return Haf;
+            return Htf;
         }
 
         StaticWalk::StaticWalk(std::unique_ptr<NUClear::Environment> environment)
