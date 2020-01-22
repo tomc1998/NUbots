@@ -74,8 +74,8 @@ namespace motion {
             // Set the rotation relative to the ground as the identity matrix,
             // since we want the torso to rotate into ground space or stay in ground space
             Ht_tg.linear()      = Eigen::Matrix3d::Identity();
-            Ht_tg.translation() = Eigen::Vector3d(0, 0, -torso_height);
-
+            Ht_tg.translation() = Htg.rotation().transpose() * -rT_tGt;
+            Ht_tg.translation() = Eigen::Vector3d(0, 0, -torso_height);  // TODO: GET PROPER COM WORKING
             return Ht_tg;
         }
 
@@ -83,7 +83,6 @@ namespace motion {
         Eigen::Affine3d StaticWalk::getFootTarget(const enum State state, const Eigen::Vector3d walkcommand) {
             // walkcommand is (x,y,theta) where x,y is velocity in m/s and theta is angle in
             // radians/seconds
-            // log("rightstep2");
 
             // Clamp the rotation to rotation limit
             double rotation = walkcommand.z() > rotation_limit ? rotation_limit : walkcommand.z();
@@ -220,39 +219,41 @@ namespace motion {
                     }
                 }
 
+                // Get walk command and centre of mass
+                Eigen::Vector3d command(walkcommand.command.x(), walkcommand.command.y(), walkcommand.command.z());
+                Eigen::Vector3d centre_of_mass(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0);
+
                 // Put our COM over the correct foot or move foot to target, based on which state we are in
                 switch (state) {
                     case LEFT_LEAN: {
+                        // Get lean target
+                        Eigen::Affine3d lean_target = getLeanTarget(
+                            Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
+                            -y_offset,
+                            calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
+                                                 Eigen::Affine3d(sensors.Htw).inverse()),
+                            centre_of_mass);
+
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(
-                            start_phase + phase_time,
-                            false,
-                            getLeanTarget(
-                                Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
-                                -y_offset,
-                                calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
-                                                     Eigen::Affine3d(sensors.Htw).inverse()),
-                                Eigen::Vector3d(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0))
-                                .matrix(),
-                            subsumptionId));
+                            start_phase + phase_time, false, lean_target.matrix(), subsumptionId));
 
                         // Keep the swing foot in place relative to support, with ground rotation
                         emit(std::make_unique<FootTarget>(
                             start_phase + phase_time, true, Hwg.matrix(), false, subsumptionId));
                     } break;
                     case RIGHT_LEAN: {
+                        // Get lean target
+                        Eigen::Affine3d lean_target = getLeanTarget(
+                            Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
+                            y_offset,
+                            calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
+                                                 Eigen::Affine3d(sensors.Htw).inverse()),
+                            centre_of_mass);
+
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(
-                            start_phase + phase_time,
-                            true,
-                            getLeanTarget(
-                                Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
-                                y_offset,
-                                calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
-                                                     Eigen::Affine3d(sensors.Htw).inverse()),
-                                Eigen::Vector3d(sensors.centre_of_mass.x(), sensors.centre_of_mass.y(), 0))
-                                .matrix(),
-                            subsumptionId));
+                            start_phase + phase_time, true, lean_target.matrix(), subsumptionId));
 
                         // Maintain left foot position while the torso moves over the right foot
                         emit(std::make_unique<FootTarget>(
@@ -264,28 +265,18 @@ namespace motion {
                         // Move the right foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(start_phase + phase_time,
                                                           true,
-                                                          getFootTarget(RIGHT_STEP,
-                                                                        Eigen::Vector3d(walkcommand.command.x(),
-                                                                                        walkcommand.command.y(),
-                                                                                        walkcommand.command.z()))
-                                                              .matrix(),
+                                                          getFootTarget(RIGHT_STEP, command).matrix(),
                                                           true,
                                                           subsumptionId));
-                        //log("rightstep");
                     } break;
 
                     case LEFT_STEP: {
                         // Move the left foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(start_phase + phase_time,
                                                           false,
-                                                          getFootTarget(LEFT_STEP,
-                                                                        Eigen::Vector3d(walkcommand.command.x(),
-                                                                                        walkcommand.command.y(),
-                                                                                        walkcommand.command.z()))
-                                                              .matrix(),
+                                                          getFootTarget(LEFT_STEP, command).matrix(),
                                                           true,
                                                           subsumptionId));
-                        //log("leftstep");
                     } break;
                     default: break;
                 }
