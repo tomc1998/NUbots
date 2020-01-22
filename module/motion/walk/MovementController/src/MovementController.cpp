@@ -85,6 +85,7 @@ namespace motion {
                     Eigen::Affine3d Ht_tg(torso_target.Ht_tg);
                     Eigen::Affine3d Hw_tg(foot_target.Hw_tg);
 
+                    // Retrieve world matrix
                     Eigen::Affine3d Htworld(sensors.Htw);
 
                     // If we are within time_horizon of our target, we always make time_horizon our target
@@ -99,19 +100,18 @@ namespace motion {
                     // Calculate the next torso and next swing foot positions we are targeting
                     Eigen::Affine3d Ht_ng =
                         torso_controller.next_torso(config.time_horizon, torso_time_left, Htg, Ht_tg);
-                    Eigen::Affine3d Hw_ng = foot_controller.next_swing(config.time_horizon, swing_time_left,
-                                            Htw.inverse() * Htg, Hw_tg);
+                    Eigen::Affine3d Hw_ng =
+                        foot_controller.next_swing(config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg);
+
 
                     // Perform IK for the support and swing feet based on the target torso position
                     Eigen::Affine3d Ht_nw_n = Ht_ng * Hw_ng.inverse();
-
-                    Eigen::Affine3d Ht_ns = (Ht_ng * Htg.inverse()) * Hts;
 
                     // Inverse kinematics
                     // By using g here, we are assuming the support foot is flat on the ground,
                     // and if it's not it'll try to make it flat on the ground
 
-                    const Transform3D t_t         = convert(Ht_ns.matrix());
+                    const Transform3D t_t         = convert(Ht_ng.matrix());
                     const Transform3D t_w         = convert(Ht_nw_n.matrix());
                     const Transform3D& left_foot  = torso_target.is_right_foot_support ? t_w : t_t;
                     const Transform3D& right_foot = torso_target.is_right_foot_support ? t_t : t_w;
@@ -145,7 +145,7 @@ namespace motion {
                     }
 
                     // Emit our locations to move to
-                    emit(waypoints);
+                    emit(std::move(waypoints));
                 });
         }
     }  // namespace walk
