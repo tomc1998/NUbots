@@ -25,69 +25,75 @@ namespace motion {
          *
          * @param time_horizon Time into the future with which we project the next position to
          * @param time_left The amount of time remaining until we should hit our target
-         * @param Hwg Homogeneous transform from ground space to current s"wing" (w) foot space
-         * @param Hng Homogeneous transform from ground space to next target s"wing" (w) foot space
+         * @param Hwg Homogeneous transform from ground space (g) to current s"wing" (w) foot space
+         * @param Hw_tg Homogeneous transform from ground space (g) to s"wing" target (t) foot space
          *
-         * @return Hf_wng homogeneous transform from ground space to the horizon swing space (next swing space)
+         * @return Hng Homogeneous transform from ground space to next target s"wing" (n) foot space
          */
         Eigen::Affine3d FootController::next_swing(const double& time_horizon,
                                                    const double& time_left,
                                                    const Eigen::Affine3d& Hwg,
-                                                   const Eigen::Affine3d& Hw_tg) {
-            // NUClear::log("\nHwg\n", Hwg.matrix(), "\n\nHw_tg\n", Hw_tg.matrix());
-
+                                                   const Eigen::Affine3d& Htg) {
             double factor = time_horizon / time_left;
 
             //---------------------------------------------------------------
             //-------------VECTOR FIELD--------------------------------------
             //---------------------------------------------------------------
 
-            // Hw_gg is ground to ground-swing-target space. That is, the space the swing target is in, but with ground
-            // rotation.
-            Eigen::Affine3d Hw_gg = Hw_tg;
-            Hw_gg.linear()        = Eigen::Matrix3d::Identity();
+            // Get the vector from target to ground in ground space
+            // Htg.rotation().transpose() = Rgt
+            // Htg.translation() = rGTt
+            // -rGTt = rTGt
+            // Rgt * rGTt = rGTg
+            const Eigen::Vector3d rTGg = -Htg.rotation().transpose() * Htg.translation();
 
-            // Get the wing target to wing vector
-            Eigen::Affine3d Hw_gw    = Hw_gg * Hwg.inverse();
-            Eigen::Vector3d rWW_gw_g = Hw_gw.translation();
+            // Get the vector from ground to wing foot in ground space
+            // Hwg.rotation().transpose() = Rgw
+            // Hwg.translation() = rGWw
+            // -rGWw = rWGw
+            // Rgw * rWGw = rWGg
+            const Eigen::Vector3d rWGg = -Hwg.rotation().transpose() * Hwg.translation();
+
+            // Get the vector from target to wing foot in ground space
+            const Eigen::Vector3d rWTg = rWGg - rTGg;
 
             // Use the vector field to get the wing target to next target position
-            Eigen::Vector3d rNW_gw_g =
-                rWW_gw_g + (Eigen::Vector3d(f_x(rWW_gw_g), 0, f_z(rWW_gw_g)).normalized() * factor * rWW_gw_g.norm());
+            // The vector field gives us the swing foot to next position vector in ground space (rNWg)
+            // rNWg + rWTg = rNTg
+            // We normalize the vector and multiply it by the distance and factor to reach the target at the right time
+            Eigen::Vector3d rNTg =
+                rWTg + (Eigen::Vector3d(f_x(rWTg), 0, f_z(rWTg)).normalized() * factor * rWTg.norm());
 
             // Vector field does not take into account the y-value so we linearly interpolate so it will reach the
             // target
-            rNW_gw_g.y() = rWW_gw_g.y() * factor;
+            rNTg.y() = rWTg.y() * (1 - factor);
 
-            // Testing for the vector retrieved from the vector field
-            // Eigen::Vector3d vector(Eigen::Vector3d(f_x(rWW_gw_g), 0, f_z(rWW_gw_g)).normalized() * factor
-            //                       * rWW_gw_g.norm());
-            // NUClear::log(vector.x(), ", ", vector.z());
-
-            // Take the vector into ground space
-            Eigen::Vector3d rNGg = Hw_gg.inverse() * rNW_gw_g;
+            // Retrieve our final vector for the translation component of Hgn
+            Eigen::Vector3d rNGg = rNTg + rTGg;
 
             //---------------------------------------------------------------
             //---------------------------------------------------------------
 
             // Get the distance to the target
-            double current_distance_target = rWW_gw_g.norm();
+            double distance = rWTg.norm();
+
+            // TODO: END OF STEP WRONG?
 
             // If we are very close to the target, just go to the target directly
-            if (current_distance_target < config.well_width) {
-                rNGg = Hw_gg.inverse().translation();
+            if (distance < config.well_width) {
+                rNGg = rTGg;
+                NUClear::log("yes hello, ", distance, " ", config.well_width);
             }
 
             // Create the Hgn matrix
             // Slerp the rotation
             // Set the translation
             Eigen::Affine3d Hgn;
-            Hgn.linear() = Eigen::Quaterniond(Hwg.rotation())
-                               .slerp(factor, Eigen::Quaterniond(Hw_tg.rotation()))
+            Hgn.linear() = Eigen::Quaterniond(Htg.rotation())
+                               .slerp(factor, Eigen::Quaterniond(Hwg.rotation()))
                                .toRotationMatrix()
                                .transpose();
-//            Hgn.linear()      = Hwg.rotation().transpose();
-            Hgn.translation() = rNGg;
+            Hgn.translation() = rTGg;
 
             return Hgn.inverse();
         }
