@@ -239,8 +239,7 @@ namespace motion {
                             start_phase + phase_time, false, lean_target.matrix(), subsumptionId));
 
                         // Keep the swing foot in place relative to support, with ground rotation
-                        emit(std::make_unique<FootTarget>(
-                            start_phase + phase_time, true, Hwg.matrix(), false, subsumptionId));
+                        emit(std::make_unique<FootTarget>(start_phase, true, Hwg.matrix(), false, subsumptionId));
                     } break;
                     case RIGHT_LEAN: {
                         // Get lean target
@@ -256,8 +255,7 @@ namespace motion {
                             start_phase + phase_time, true, lean_target.matrix(), subsumptionId));
 
                         // Maintain left foot position while the torso moves over the right foot
-                        emit(std::make_unique<FootTarget>(
-                            start_phase + phase_time, false, Hwg.matrix(), false, subsumptionId));
+                        emit(std::make_unique<FootTarget>(start_phase, false, Hwg.matrix(), false, subsumptionId));
                     } break;
 
 

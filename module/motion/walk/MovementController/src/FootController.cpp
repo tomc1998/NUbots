@@ -82,7 +82,6 @@ namespace motion {
             // If we are very close to the target, just go to the target directly
             if (distance < config.well_width) {
                 rNGg = rTGg;
-                NUClear::log("yes hello, ", distance, " ", config.well_width);
             }
 
             // Create the Hgn matrix
@@ -93,7 +92,7 @@ namespace motion {
                                .slerp(factor, Eigen::Quaterniond(Hwg.rotation()))
                                .toRotationMatrix()
                                .transpose();
-            Hgn.translation() = rTGg;
+            Hgn.translation() = rNGg;
 
             return Hgn.inverse();
         }
