@@ -31,8 +31,13 @@ def run(files, output, **kwargs):
 
             if packet.type == "message.input.MotionCapture":
                 count += 1
-                print(count)
+
                 RigBod = packet.msg.rigidBodies[0]
+                #stuff = packet.msg
+                #print("*******************************************")
+                #print(count)
+                #print("*******************************************")
+                #print(stuff)
                 with open(
                     os.path.join(
                         output,
@@ -53,3 +58,5 @@ def run(files, output, **kwargs):
                         indent=4,
                         sort_keys=True,
                     )
+
+

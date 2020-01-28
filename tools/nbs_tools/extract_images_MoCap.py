@@ -1,57 +1,61 @@
 
-import os
 import json
-from . import decoder
+import os
 
+from tqdm import tqdm
+
+from .nbs import Decoder
 
 def register(command):
-    command.help = "Decode an nbs file and extract any compressed jpeg files into jpeg files"
+    command.help = "Decode an nbs file and extract any Motion Capture data into json files"
 
     # Command arguments
-    command.add_argument("in_file", metavar="in_file", help="The nbs file to extract the compressed images from")
     command.add_argument(
-        "out_path", nargs="?", default=os.getcwd(), metavar="out_path", help="The folder to extract the images into"
+        "files", metavar="files", nargs="+", help="The nbs file to extract the compressed images and MoCap data from"
     )
+    command.add_argument("--output", "-o", nargs="?", default=os.getcwd(), help="The folder to extract the images and json files into")
 
 
-def run(in_file, out_path, **kwargs):
+def run(files, output, **kwargs):
 
-    output_path = os.path.join(out_path, os.path.basename(os.path.splitext(in_file)[0]))
-    os.makedirs(output_path, exist_ok=True)
+    os.makedirs(output, exist_ok=True)
     image_count = 0
     MoCap_count = 0
-    newMoCapData = False
-    for packet in decoder.decode(in_file):
-        if packet.type == "message.input.MotionCapture":
-            MoCap_count += 1
-            newMoCapData = True
-            RigBod = packet.msg.rigidBodies[0]
-            #print(RigBod.position)
+    decoder = Decoder(*files)
+    with tqdm(total=len(decoder), unit="B", unit_scale=True, dynamic_ncols=True) as progress:
+        for packet in decoder:
 
-        # Left eye only
-        elif ((newMoCapData == True) and (packet.type == "message.output.CompressedImage") and (packet.msg.name == '01188260')):
-            newMoCapData = False
-            image_count += 1
-            with open(os.path.join(output_path, "{}_{:012d}.jpg".format(packet.msg.name, packet.timestamp)), "wb") as f:
-                f.write(packet.msg.data)
-            with open(os.path.join(output_path, "{}_{:012d}.json".format(packet.msg.name, packet.timestamp)), "w") as f:
-                # Data goes here
-                json.dump(
-                    {
-                        "time_stamp": packet.timestamp,
-                        "position": [RigBod.position.x, RigBod.position.y, RigBod.position.z],
-                        "rotation": [RigBod.rotation.x, RigBod.rotation.y, RigBod.rotation.z, RigBod.rotation.t],
-                        "tracking_valid": RigBod.trackingValid,
-                        "lens": {
-                            "projection": packet.msg.lens.projection,
-                            "focal_length": packet.msg.lens.focal_length,
-                            "centre": [0, 0],
-                            "fov": packet.msg.lens.fov.x,
+            # Update the progress bar
+            progress.n = decoder.bytes_read()
+            progress.update(0)
+
+            if packet.type == "message.input.MotionCapture":
+                MoCap_count += 1
+                RigBod = packet.msg.rigidBodies[0]
+                with open(os.path.join(output, "{:012d}.json".format(packet.timestamp)), "w") as f:
+                    json.dump(
+                        {
+                            "packet_time_stamp": packet.timestamp,
+                            "MoCap_time_stamp": packet.msg.timestamp,
+                            "position": [RigBod.position.x, RigBod.position.y, RigBod.position.z],
+                            "rotation": [RigBod.rotation.x, RigBod.rotation.y, RigBod.rotation.z, RigBod.rotation.t],
+                            "tracking_valid": RigBod.trackingValid,
                         },
-                    },
-                    f,
-                    indent=4,
-                    sort_keys=True,
-                )
+                        f,
+                        indent=4,
+                        sort_keys=True,
+                    )
+
+            # Left eye only
+            elif packet.type == "message.output.CompressedImage":
+                image_count += 1
+                with open(os.path.join(output, "{:012d}.jpg".format(packet.timestamp)), "wb") as f:
+                    f.write(packet.msg.data)
+                #with open(os.path.join(output, "{:012d}.txt".format(packet.timestamp)), "w") as f:
+                #    f.write(str(int(packet.msg.timestamp.seconds * 1e9 + packet.msg.timestamp.nanos)))
+
+
+
     print("image_count:",image_count)
     print("MoCap_count:",MoCap_count)
+
