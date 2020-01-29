@@ -49,33 +49,17 @@ namespace motion {
             // This will be the returned matrix, ground to torso target
             Eigen::Affine3d Ht_tg;
 
-            // Need to find how much to move the torso to so that the COM is over the foot
-            // Get the vector from torso to support in torso space
-            // Then get the vector from CoM to support foot in torso space
-            Eigen::Vector3d rSTt(Hts.translation());
-            Eigen::Vector3d rSCt(rSTt - rCTt);
-
-            // Going from support foot to the torso, we add on the CoM to torso vector
-            // If the CoM is on the torso, this will move the torso target to above the foot
-            // If CoM is closer to the foot than the torso, the torso will not move the whole way to the support foot
-            // If CoM is further away than the torso to the foot, the torso will move past the foot to land the CoM on
-            // the foot
-            Eigen::Vector3d rT_tSt = Eigen::Vector3d(-rSTt + rSCt);
-
-            // Fix up the vector using configuration variables. We want to set the height to our defined torso height
-            // that we want to robot to move to. The offsets set the CoM inside the support polygon rather than on the
-            // edge, since the support foot is measured from the ankle servo which is at the back of the foot.
-            rT_tSt.z() = torso_height;
-            // rT_tSt.x() += x_offset;
-            // rT_tSt.y() += y_offset;
-
-            Eigen::Vector3d rT_tGt = (Htg.rotation() * (Htg.inverse() * Hts).translation()) + rT_tSt;
+            // IF rCTt = 0, then CoM is on torso, move torso over the support foot (target to ground = 0)
+            // IF rCTt > 0, then CoM is closer to support foot (if support is right), and target to ground should be
+            // positive so torso does quite reach the support foot so the CoM lands on the support foot
+            // IF rCTt < 0, then CoM is further away from support foot (support is right), and target the ground should
+            // be negative so torso goes past support foot to land CoM on support foot
+            Eigen::Vector3d rGTt(rCTt.x(), rCTt.y(), -torso_height);
 
             // Set the rotation relative to the ground as the identity matrix,
             // since we want the torso to rotate into ground space or stay in ground space
             Ht_tg.linear()      = Eigen::Matrix3d::Identity();
-            Ht_tg.translation() = Htg.rotation().transpose() * -rT_tGt;
-            Ht_tg.translation() = Eigen::Vector3d(0, 0, -torso_height);  // TODO: GET PROPER COM WORKING
+            Ht_tg.translation() = rGTt;
             return Ht_tg;
         }
 
