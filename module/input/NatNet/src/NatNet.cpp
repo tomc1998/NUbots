@@ -71,12 +71,8 @@ namespace input {
                         if (remote == packet.remote.address && version != 0) {
                             process(packet.payload);
                         }
-                        // We have started connecting but haven't received a return ping
-                        else if (remote == packet.remote.address && version == 0) {
-                            // TODO maybe set a timeout here to try again
-                        }
                         // We haven't connected to anything yet
-                        else if (remote == 0) {
+                        else if (remote == 0 || version == 0) {
                             // This is now our remote
                             remote = packet.remote.address;
 
@@ -343,9 +339,7 @@ namespace input {
                 } break;
 
                 // Bad packet
-                default: {
-                    log<NUClear::WARN>("NatNet received an unexpected model type", type);
-                } break;
+                default: { log<NUClear::WARN>("NatNet received an unexpected model type", type); } break;
             }
         }
     }
