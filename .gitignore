@@ -77,3 +77,4 @@ tags
 \.vscode/ipch
 
 *.nbs*
+/log/
