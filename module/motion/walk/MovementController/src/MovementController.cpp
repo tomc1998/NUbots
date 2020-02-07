@@ -32,6 +32,7 @@ namespace motion {
         using utility::math::matrix::Transform3D;
         using utility::motion::kinematics::calculateGroundSpace;
         using utility::motion::kinematics::calculateLegJoints;
+        using utility::nusight::graph;
         using utility::support::Expression;
 
         MovementController::MovementController(std::unique_ptr<NUClear::Environment> environment)
@@ -103,7 +104,6 @@ namespace motion {
                     Eigen::Affine3d Hw_ng =
                         foot_controller.next_swing(config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg);
 
-
                     // Perform IK for the support and swing feet based on the target torso position
                     Eigen::Affine3d Ht_nw_n = Ht_ng * Hw_ng.inverse();
 
@@ -111,10 +111,71 @@ namespace motion {
                     // By using g here, we are assuming the support foot is flat on the ground,
                     // and if it's not it'll try to make it flat on the ground
 
-                    const Transform3D t_t         = convert(Ht_ng.matrix());
-                    const Transform3D t_w         = convert(Ht_nw_n.matrix());
-                    const Transform3D& left_foot  = torso_target.is_right_foot_support ? t_w : t_t;
-                    const Transform3D& right_foot = torso_target.is_right_foot_support ? t_t : t_w;
+                    const Eigen::Affine3d left_foot  = torso_target.is_right_foot_support ? Ht_nw_n : Ht_ng;
+                    const Eigen::Affine3d right_foot = torso_target.is_right_foot_support ? Ht_ng : Ht_nw_n;
+
+
+                    //-----------------------
+                    //------------------------
+
+                    Sensors sensors1;
+                    sensors1.servo = std::vector<Sensors::Servo>(20);
+
+                    std::vector<std::pair<ServoID, double>> left_leg_joints =
+                        utility::motion::kinematics::calculateLegJoints(model, left_foot, LimbID::LEFT_LEG);
+                    for (const auto& leg_joint : left_leg_joints) {
+                        ServoID servoID;
+                        double position;
+
+                        std::tie(servoID, position) = leg_joint;
+
+                        sensors1.servo[servoID].present_position = position;
+                    }
+
+                    std::vector<std::pair<ServoID, double>> right_leg_joints =
+                        utility::motion::kinematics::calculateLegJoints(model, right_foot, LimbID::RIGHT_LEG);
+                    for (const auto& leg_joint : right_leg_joints) {
+                        ServoID servoID;
+                        double position;
+
+                        std::tie(servoID, position) = leg_joint;
+
+                        sensors1.servo[servoID].present_position = position;
+                    }
+
+                    Eigen::Affine3d left_foot_position = utility::motion::kinematics::calculatePosition(
+                        model, sensors, ServoID::L_ANKLE_ROLL)[ServoID::L_ANKLE_ROLL];
+                    Eigen::Affine3d right_foot_position = utility::motion::kinematics::calculatePosition(
+                        model, sensors, ServoID::R_ANKLE_ROLL)[ServoID::R_ANKLE_ROLL];
+
+                    auto ikresult =
+                        utility::motion::kinematics::calculateLegJoints(model, left_foot_position, LimbID::LEFT_LEG);
+
+                    double lerror = (left_foot_position.matrix().array() - left_foot.matrix().array()).abs().maxCoeff();
+                    double rerror =
+                        (right_foot_position.matrix().array() - right_foot.matrix().array()).abs().maxCoeff();
+
+                    if (lerror < 1e-4 || rerror < 1e-4) {
+                        log("ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR "
+                            "ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR ERROR "
+                            "ERROR ERROR ERROR ERROR ERROR");
+                        log("Calculating forward kinematics");
+                        log("L Error: ", lerror, ", R Error, ", rerror);
+                        log("Forward Kinematics predicts left foot: \n", left_foot_position.matrix());
+                        log("Forward Kinematics predicts right foot: \n", right_foot_position.matrix());
+                        log("Compared to request: \n", left_foot.matrix(), "\n", right_foot.matrix());
+                        for (size_t servo_id = 0; servo_id < ServoID::NUMBER_OF_SERVOS; ++servo_id) {
+                            log(ServoID(servo_id), ": ", sensors1.servo[servo_id].present_position);
+                        }
+
+                        for (int i = 0; i < ikresult.size(); i++) {
+
+                            log(ikresult.at(i).first, " : ", ikresult.at(i).second);
+                        }
+                    }
+
+                    //-----------------------
+                    //------------------------
 
                     auto left_joints  = calculateLegJoints(model, left_foot, LimbID::LEFT_LEG);
                     auto right_joints = calculateLegJoints(model, right_foot, LimbID::RIGHT_LEG);

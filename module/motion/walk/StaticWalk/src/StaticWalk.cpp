@@ -41,13 +41,10 @@ namespace motion {
         using utility::nusight::graph;
         using utility::support::Expression;
 
-        // Retrieves the target for the lean based on support foot, ground foot, and COM location
-        Eigen::Affine3d StaticWalk::getLeanTarget(const Eigen::Affine3d Hts,
-                                                  double y_offset_local,
-                                                  const Eigen::Affine3d Htg,
-                                                  const Eigen::Vector3d rCTt) {
+        // Retrieves the target for the lean based on COM location
+        Eigen::Affine3d StaticWalk::getLeanTarget(double y_offset_local, const Eigen::Vector3d& rCTt) {
             // This will be the returned matrix, ground to torso target
-            Eigen::Affine3d Ht_tg;
+            Eigen::Affine3d Htg;
 
             // IF rCTt = 0, then CoM is on torso, move torso over the support foot (target to ground = 0)
             // IF rCTt > 0, then CoM is closer to support foot (if support is right), and target to ground should be
@@ -58,9 +55,9 @@ namespace motion {
 
             // Set the rotation relative to the ground as the identity matrix,
             // since we want the torso to rotate into ground space or stay in ground space
-            Ht_tg.linear()      = Eigen::Matrix3d::Identity();
-            Ht_tg.translation() = rGTt;
-            return Ht_tg;
+            Htg.linear()      = Eigen::Matrix3d::Identity();
+            Htg.translation() = rGTt;
+            return Htg;
         }
 
         // Find the foot target for the step
@@ -211,12 +208,7 @@ namespace motion {
                 switch (state) {
                     case LEFT_LEAN: {
                         // Get lean target
-                        Eigen::Affine3d lean_target = getLeanTarget(
-                            Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
-                            -y_offset,
-                            calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
-                                                 Eigen::Affine3d(sensors.Htw).inverse()),
-                            centre_of_mass);
+                        Eigen::Affine3d lean_target = getLeanTarget(-y_offset, centre_of_mass);
 
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(
@@ -227,12 +219,7 @@ namespace motion {
                     } break;
                     case RIGHT_LEAN: {
                         // Get lean target
-                        Eigen::Affine3d lean_target = getLeanTarget(
-                            Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
-                            y_offset,
-                            calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
-                                                 Eigen::Affine3d(sensors.Htw).inverse()),
-                            centre_of_mass);
+                        Eigen::Affine3d lean_target = getLeanTarget(y_offset, centre_of_mass);
 
                         // Move the torso over the left foot
                         emit(std::make_unique<TorsoTarget>(

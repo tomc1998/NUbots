@@ -80,7 +80,7 @@ namespace motion {
             // TODO: END OF STEP WRONG?
 
             // If we are very close to the target, just go to the target directly
-            if (distance < config.well_width) {
+            if (distance < config.well_width || factor == 1) {
                 rNGg = rTGg;
             }
 
