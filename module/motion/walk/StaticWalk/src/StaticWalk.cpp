@@ -177,7 +177,8 @@ namespace motion {
                                 calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]),
                                                      Eigen::Affine3d(sensors.Htw).inverse()));
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]).inverse() * Htg;
-
+                            Hwg.translation().z() = 0;
+                            Hwg.translation().y() = -stance_width;
                             // Force the foot into ground space. TODO: check this
                             Hwg.linear() = Eigen::Matrix3d::Identity();
 
@@ -190,7 +191,8 @@ namespace motion {
                                 calculateGroundSpace(Eigen::Affine3d(sensors.forward_kinematics[ServoID::L_ANKLE_ROLL]),
                                                      Eigen::Affine3d(sensors.Htw).inverse()));
                             Hwg = Eigen::Affine3d(sensors.forward_kinematics[ServoID::R_ANKLE_ROLL]).inverse() * Htg;
-
+                            Hwg.translation().z() = 0;
+                            Hwg.translation().y() = stance_width;
                             // Force the foot into ground space. TODO: check this
                             Hwg.linear() = Eigen::Matrix3d::Identity();
 
