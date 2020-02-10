@@ -86,6 +86,19 @@ namespace motion {
                     Eigen::Affine3d Ht_tg(torso_target.Ht_tg);
                     Eigen::Affine3d Hw_tg(foot_target.Hw_tg);
 
+                    double step_length = Hw_tg.translation().norm();
+                    double hip_offset =
+                        Eigen::Vector3d(model.leg.HIP_OFFSET_X,
+                                        (foot_target.is_right_foot_swing ? -1 : 1) * model.leg.HIP_OFFSET_Y,
+                                        model.leg.HIP_OFFSET_Z)
+                            .norm();
+                    double max_step_length =
+                        hip_offset + model.leg.UPPER_LEG_LENGTH + model.leg.LOWER_LEG_LENGTH + model.leg.FOOT_HEIGHT;
+
+                    if (step_length > max_step_length) {
+                        log("Swing foot target out of bounds.");
+                    }
+
                     // Retrieve world matrix
                     Eigen::Affine3d Htworld(sensors.Htw);
 

@@ -5,7 +5,7 @@ foot:
   step_steep: 2
   # Size of the well near the target
   # well_width must be an even number
-  well_width: 0.002
+  well_width: 0.02
 
 # Gain for the support and swing legs
 gains:

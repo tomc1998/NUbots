@@ -57,12 +57,18 @@ namespace motion {
             // Get the vector from target to wing foot in ground space
             const Eigen::Vector3d rWTg = rWGg - rTGg;
 
+
             // Use the vector field to get the wing target to next target position
             // The vector field gives us the swing foot to next position vector in ground space (rNWg)
             // rNWg + rWTg = rNTg
-            // We normalize the vector and multiply it by the distance and factor to reach the target at the right time
-            Eigen::Vector3d rNTg =
-                rWTg + (Eigen::Vector3d(f_x(rWTg), 0, f_z(rWTg)).normalized() * factor * rWTg.norm());
+            // We normalize the vector and multiply it by the distance and factor to reach the target at the right
+            // time
+            Eigen::Vector3d rNWg = Eigen::Vector3d(f_x(rWTg), 0, f_z(rWTg)).normalized() * factor * rWTg.norm();
+            Eigen::Vector3d rNTg = rWTg + rNWg;
+
+            if (rWTg.z() + rNWg.z() < 0) {
+                rNTg.z() = 0;
+            }
 
             // Vector field does not take into account the y-value so we linearly interpolate so it will reach the
             // target
@@ -77,21 +83,24 @@ namespace motion {
             // Get the distance to the target
             double distance = rWTg.norm();
 
-            // TODO: END OF STEP WRONG?
-
-            // If we are very close to the target, just go to the target directly
-            if (distance < config.well_width || factor == 1) {
-                rNGg = rTGg;
-            }
-
             // Create the Hgn matrix
             // Slerp the rotation
             // Set the translation
             Eigen::Affine3d Hgn;
+
             Hgn.linear() = Eigen::Quaterniond(Htg.rotation())
                                .slerp(factor, Eigen::Quaterniond(Hwg.rotation()))
                                .toRotationMatrix()
                                .transpose();
+
+            // If we are very close to the target, just go to the target directly
+            if (distance < config.well_width / 5 || factor == 1) {
+                rNGg = rTGg;
+            }
+            if ((Htg.rotation() - Hwg.rotation()).maxCoeff() < 0.001 || factor == 1) {
+                Hgn.linear() = Htg.rotation().transpose();
+            }
+
             Hgn.translation() = rNGg;
 
             return Hgn.inverse();
