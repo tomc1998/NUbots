@@ -26,6 +26,8 @@ namespace motion {
         using extension::Configuration;
         using message::behaviour::ServoCommand;
         using message::input::Sensors;
+        using message::motion::DisableWalkEngineCommand;
+        using message::motion::EnableWalkEngineCommand;
         using message::motion::FootTarget;
         using message::motion::KinematicsModel;
         using message::motion::TorsoTarget;
@@ -114,6 +116,9 @@ namespace motion {
 
         StaticWalk::StaticWalk(std::unique_ptr<NUClear::Environment> environment)
             : Reactor(std::move(environment)), subsumptionId(size_t(this) * size_t(this) - size_t(this)) {
+            on<Startup, Trigger<KinematicsModel>>().then(
+                [this](const KinematicsModel& kinematicsModel) { model = kinematicsModel; });
+
             on<Configuration>("StaticWalk.yaml").then([this](const Configuration& config) {
                 // Set initial conditions
                 start_phase = NUClear::clock::now();
@@ -129,20 +134,16 @@ namespace motion {
                 x_offset       = config["x_offset"].as<double>();
                 rotation_limit = config["rotation_limit"].as<Expression>();
 
-                // Set test parameters from config
-                double x_speed = config["test"]["x_speed"].as<double>();
-                double y_speed = config["test"]["y_speed"].as<double>();
-                double angle   = config["test"]["angle"].as<double>();
-
                 // Multiply by 2 so that the lean states are accounted for
                 time = std::chrono::duration_cast<std::chrono::duration<double>>(phase_time).count() * 2;
-
-                // Emit the walk command
-                emit(std::make_unique<WalkCommand>(subsumptionId, Eigen::Vector3d(x_speed, y_speed, angle)));
             });
 
             on<Trigger<Sensors>, With<WalkCommand>>().then([this](const Sensors& sensors,
                                                                   const WalkCommand& walkcommand) {
+                if (walkcommand.command.x() == 0 && walkcommand.command.y() == 0 && walkcommand.command.z() == 0) {
+                    state = STOP;
+                }
+
                 // INITIAL state occurs only as the first state in the walk to set the matrix Hff_s
                 if (state == INITIAL) {
                     // Set the state based on the config
@@ -249,9 +250,36 @@ namespace motion {
                                                           true,
                                                           subsumptionId));
                     } break;
+                    case STOP: {
+                        Eigen::Affine3d Htg;
+                        Htg.linear()      = Eigen::Matrix3d::Identity();
+                        Htg.translation() = Eigen::Vector3d(model.leg.HIP_OFFSET_X, stance_width / 2, -torso_height);
+
+                        // Move the torso between the feet
+                        emit(
+                            std::make_unique<TorsoTarget>(start_phase + phase_time, true, Htg.matrix(), subsumptionId));
+
+                        // We want to move the feet to be in line with each other
+                        Hwg.translation().x() = 0;
+                        // Keep the swing foot in place relative to support, with ground rotation
+                        emit(std::make_unique<FootTarget>(
+                            start_phase + phase_time, true, Hwg.matrix(), false, subsumptionId));
+                    } break;
                     default: break;
                 }
             });
+
+            // on<Trigger<EnableWalkEngineCommand>>().then([this](const EnableWalkEngineCommand& command) {
+            //     subsumptionId = command.subsumptionId;
+
+            //     state = INITIAL;
+            //     updateHandle.enable();
+            // });
+
+            // on<Trigger<DisableWalkEngineCommand>>().then([this] {
+            //     // Nobody needs the walk engine, so we stop updating it.
+            //     updateHandle.disable();
+            // });
 
             emit<Scope::INITIALIZE>(std::make_unique<RegisterAction>(
                 RegisterAction{subsumptionId,

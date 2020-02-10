@@ -7,12 +7,6 @@ stance_width: 0.15
 # Which lean the walk will start on
 start_right_lean: true
 
-# values for walkcommand (test)
-test:
-  x_speed: 0.01
-  y_speed: 0
-  angle: 0
-
 x_offset: 0
 y_offset: 0
 

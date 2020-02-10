@@ -4,6 +4,7 @@
 
 #include <Eigen/Geometry>
 #include <nuclear>
+#include "message/motion/KinematicsModel.h"
 
 namespace module {
 namespace motion {
@@ -15,11 +16,13 @@ namespace motion {
             // Transform from ground to swing foot
             Eigen::Transform<double, 3, Eigen::Affine, Eigen::DontAlign> Hwg;
             // The states that the robots enters to complete the steps
-            enum State { INITIAL, LEFT_LEAN, RIGHT_STEP, RIGHT_LEAN, LEFT_STEP } state;
+            enum State { INITIAL, LEFT_LEAN, RIGHT_STEP, RIGHT_LEAN, LEFT_STEP, STOP } state;
             // The time each phase takes to complete
             NUClear::clock::duration phase_time;
             // The time at the start of the current phase
             NUClear::clock::time_point start_phase;
+            // Model of the robot
+            message::motion::KinematicsModel model;
             // The height of the robots torso (m)
             double torso_height;
             // The width of the robots stance as it walks (m)
@@ -29,7 +32,10 @@ namespace motion {
             double x_offset;
             double time;
             double rotation_limit;
-            size_t subsumptionId;
+            size_t subsumptionId = 1;
+
+            // Reaction handle for the main update loop, disabling when not moving will save unnecessary CPU
+            ReactionHandle updateHandle;
 
             // Returns ground to torso target for specified lean
             Eigen::Affine3d getLeanTarget(double y_offset_local, const Eigen::Vector3d& rCTt);
