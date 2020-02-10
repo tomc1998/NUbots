@@ -114,8 +114,11 @@ namespace motion {
                     // Calculate the next torso and next swing foot positions we are targeting
                     Eigen::Affine3d Ht_ng =
                         torso_controller.next_torso(config.time_horizon, torso_time_left, Htg, Ht_tg);
-                    Eigen::Affine3d Hw_ng =
-                        foot_controller.next_swing(config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg);
+                    Eigen::Affine3d Hw_ng = foot_target.lift
+                                                ? foot_controller.next_swing(
+                                                      config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg)
+                                                : torso_controller.next_torso(
+                                                      config.time_horizon, swing_time_left, Htw.inverse() * Htg, Hw_tg);
 
                     // Perform IK for the support and swing feet based on the target torso position
                     Eigen::Affine3d Ht_nw_n = Ht_ng * Hw_ng.inverse();
