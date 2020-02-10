@@ -42,25 +42,9 @@ namespace motion {
             Eigen::Vector3d rT_tTg = rT_tGg - rTGg;
             Eigen::Vector3d rNTg   = rT_tTg * factor;
 
-            if (rT_tTg.norm() < 0.002) {
+            if (rT_tTg.norm() < 0.001) {
                 rNTg = rT_tTg;
             }
-
-            /*if (rNTg.z() > 0.00001) {
-                NUClear::log("We have lift off: ", rNTg.z());
-                NUClear::log("rT_tGg: ",
-                             rT_tGg.transpose(),
-                             "\nrTGg: ",
-                             rTGg.transpose(),
-                             "\nrT_tTg: ",
-                             rT_tTg.transpose(),
-                             "\nfactor: ",
-                             factor,
-                             "\nrNTg: ",
-                             rNTg.transpose());
-                NUClear::log("\nHtg\n", Htg.matrix());
-            }*/
-            // NUClear::log("rNGg z: ", (rNTg + rTGg).z(), "\nrTGg z: ", rTGg.z(), "\n time ", time_left);
 
             // Set the translation of the final homogeneous transform
             // rNGg = rNTg + rTGg
@@ -71,6 +55,12 @@ namespace motion {
                                .slerp(factor, Eigen::Quaterniond(Htg.rotation()))
                                .toRotationMatrix()
                                .transpose();
+
+            // If the difference between the current rotation and target rotation is small, just go straight to target
+            // rotation
+            if ((Htg.rotation() - Ht_tg.rotation()).maxCoeff() < 0.001 || factor == 1) {
+                Hgn.linear() = Ht_tg.rotation().transpose();
+            }
 
             return Hgn.inverse();
         }
