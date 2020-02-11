@@ -140,9 +140,11 @@ namespace motion {
 
             on<Trigger<Sensors>, With<WalkCommand>>().then([this](const Sensors& sensors,
                                                                   const WalkCommand& walkcommand) {
-                if (walkcommand.command.x() == 0 && walkcommand.command.y() == 0 && walkcommand.command.z() == 0) {
-                    state = STOP;
-                }
+                subsumptionId = walkcommand.subsumptionId;
+
+                // if (walkcommand.command.x() == 0 && walkcommand.command.y() == 0 && walkcommand.command.z() == 0) {
+                //     state = STOP;
+                // }
 
                 // INITIAL state occurs only as the first state in the walk to set the matrix Hff_s
                 if (state == INITIAL) {

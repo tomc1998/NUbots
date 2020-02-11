@@ -32,7 +32,7 @@ namespace motion {
             double x_offset;
             double time;
             double rotation_limit;
-            size_t subsumptionId = 1;
+            size_t subsumptionId;
 
             // Reaction handle for the main update loop, disabling when not moving will save unnecessary CPU
             ReactionHandle updateHandle;
