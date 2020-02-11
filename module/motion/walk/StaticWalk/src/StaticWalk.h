@@ -41,7 +41,9 @@ namespace motion {
             Eigen::Affine3d getLeanTarget(double y_offset_local, const Eigen::Vector3d& rCTt);
 
             // Returns ground to foot target for specified step
-            Eigen::Affine3d getFootTarget(const enum State state, const Eigen::Vector3d walkcommand);
+            Eigen::Affine3d getFootTarget(const enum State state,
+                                          const Eigen::Vector3d& walkcommand,
+                                          const bool isLeft);
 
         public:
             /// @brief Called by the powerplant to build and setup the StaticWalk reactor.

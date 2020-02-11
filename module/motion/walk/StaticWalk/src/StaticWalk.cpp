@@ -63,7 +63,9 @@ namespace motion {
         }
 
         // Find the foot target for the step
-        Eigen::Affine3d StaticWalk::getFootTarget(const enum State state, const Eigen::Vector3d walkcommand) {
+        Eigen::Affine3d StaticWalk::getFootTarget(const enum State state,
+                                                  const Eigen::Vector3d& walkcommand,
+                                                  const bool isLeft) {
             // walkcommand is (x,y,theta) where x,y is velocity in m/s and theta is angle in
             // radians/seconds
 
@@ -101,11 +103,9 @@ namespace motion {
                                  : (translation / std::abs(rotation)) * std::sin(std::abs(rotation) * time)
                                        + (origin * (1 - std::cos(std::abs(rotation) * time)));
                 Eigen::Vector3d target = end_point;
-                target.y() -= stance_width;
+                target.y() += (isLeft ? 1 : -1) * stance_width;
 
-                const Eigen::Matrix3d Rtf(Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX())
-                                          * Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY())
-                                          * Eigen::AngleAxisd(rotation, Eigen::Vector3d::UnitZ()));
+                const Eigen::Matrix3d Rtf(Eigen::AngleAxisd(-rotation, Eigen::Vector3d::UnitZ()));
 
                 Htf.linear()      = Rtf;
                 Htf.translation() = -Rtf * target;
@@ -239,7 +239,7 @@ namespace motion {
                         // Move the right foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(start_phase + phase_time,
                                                           true,
-                                                          getFootTarget(RIGHT_STEP, command).matrix(),
+                                                          getFootTarget(RIGHT_STEP, command, false).matrix(),
                                                           true,
                                                           subsumptionId));
                     } break;
@@ -248,7 +248,7 @@ namespace motion {
                         // Move the left foot to the location specified by the walkcommand
                         emit(std::make_unique<FootTarget>(start_phase + phase_time,
                                                           false,
-                                                          getFootTarget(LEFT_STEP, command).matrix(),
+                                                          getFootTarget(LEFT_STEP, command, true).matrix(),
                                                           true,
                                                           subsumptionId));
                     } break;
