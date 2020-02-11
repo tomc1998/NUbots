@@ -6,16 +6,10 @@ nuclear_role(
   support::logging::ConsoleLogHandler
 
   # This must come first as it emits config which many roles depend on (e.g. SensorFilter, WalkEngine)
-  motion::KinematicsConfiguration
   support::configuration::NetworkConfiguration
   support::configuration::GlobalConfig
-  platform::darwin::HardwareIO
-  platform::darwin::SensorFilter
-  input::Camera
-  support::NUsight
-  output::ImageCompressor
-  support::configuration::SoccerConfig
-  # Image capture stuff
+
+  # MoCap data capture stuff
   support::logging::DataLogging
-  #input::NatNet
+  input::NatNet
 )

@@ -9,7 +9,7 @@ plotted in excel.
 
 xyz = np.zeros((10000, 3))
 image_index = 0
-path = "/media/daniel/Daniel's HardDrive/Research/e3"
+path = "/home/daniel/RobotCode/NUbots/log/20191003T19_04_49"
 
 for r, d, f in os.walk(path):
     for file in f:
@@ -17,7 +17,7 @@ for r, d, f in os.walk(path):
             print(file)
             with open(os.path.join(r,file)) as f2:
                 json_data = json.load(f2)
-            xyz[image_index,:] = json_data['position']
+                xyz[image_index,:] = json_data['position']
 
             if json_data['tracking_valid'] == False:
                 print("Tracking INVALID for ",file)
@@ -25,4 +25,4 @@ for r, d, f in os.walk(path):
             image_index += 1
 xyz_trimmed = xyz[0:image_index,:]
 
-np.savetxt("FullPositionTruth6.txt", xyz_trimmed)
+np.savetxt("FullPositionTruth.txt", xyz_trimmed)
