@@ -1,4 +1,0 @@
-18_36_52 - Training Data 1
-18_44_01 - Test Data 1
-18_51_35 - Training Data 2
-19_04_49 - Test Data 2
