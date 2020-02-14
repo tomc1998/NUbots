@@ -1,9 +1,9 @@
 
 import json
 import os
-
+import cv2
 from tqdm import tqdm
-
+from .images import decode_image, fourcc
 from .nbs import Decoder
 
 
@@ -20,6 +20,7 @@ def register(command):
 def run(files, output, **kwargs):
 
     os.makedirs(output, exist_ok=True)
+    count = 1
 
     decoder = Decoder(*files)
     with tqdm(total=len(decoder), unit="B", unit_scale=True, dynamic_ncols=True) as progress:
@@ -29,41 +30,43 @@ def run(files, output, **kwargs):
             progress.n = decoder.bytes_read()
             progress.update(0)
 
-            if packet.type == "message.output.CompressedImage":
+            if ((packet.type == "message.output.CompressedImage") and (packet.msg.name == 'Right')):
+
+                data = decode_image(packet.msg.data, packet.msg.format)
+
+                if len(data) == 1:
+                    img = data[0]["image"].numpy()
+                    fmt = data[0]["fourcc"]
+                else:
+                    img = [d for d in data if d["name"] == "_colour"][0]["image"].numpy()
+                    fmt = data[0]["fourcc"]
+
+                # Debayer if we need to
+                if fmt == fourcc("BGGR"):
+                    img = cv2.cvtColor(img, cv2.COLOR_BayerBG2RGB)
+                elif fmt == fourcc("RGGB"):
+                    img = cv2.cvtColor(img, cv2.COLOR_BayerRG2RGB)
+                elif fmt == fourcc("GRBG"):
+                    img = cv2.cvtColor(img, cv2.COLOR_BayerGR2RGB)
+                elif fmt == fourcc("GBRG"):
+                    img = cv2.cvtColor(img, cv2.COLOR_BayerGB2RGB)
+
+
+                filename = os.path.join(output, "{:05d}.jpg".format(count))
+
+
+                time = int(packet.msg.timestamp.seconds * 1e9 + packet.msg.timestamp.nanos)
+                cv2.imwrite(filename, img)
+
+                filename = os.path.join(output, "{:05d}.json".format(count))
+                count += 1
                 with open(
-                    os.path.join(
-                        output,
-                        "{}_{:012d}.jpg".format(
-                            packet.msg.name, int(packet.msg.timestamp.seconds * 1e9 + packet.msg.timestamp.nanos)
-                        ),
-                    ),
-                    "wb",
-                ) as f:
-                    f.write(packet.msg.data)
-                with open(
-                    os.path.join(
-                        output,
-                        "{}_{:012d}.json".format(
-                            packet.msg.name, int(packet.msg.timestamp.seconds * 1e9 + packet.msg.timestamp.nanos)
-                        ),
-                    ),
+                    filename,
                     "w",
                 ) as f:
-                    Hcw = packet.msg.Hcw
                     json.dump(
                         {
-                            "Hcw": [
-                                [Hcw.x.x, Hcw.x.y, Hcw.x.z, Hcw.x.t],
-                                [Hcw.y.x, Hcw.y.y, Hcw.y.z, Hcw.y.t],
-                                [Hcw.z.x, Hcw.z.y, Hcw.z.z, Hcw.z.t],
-                                [Hcw.t.x, Hcw.t.y, Hcw.t.z, Hcw.t.t],
-                            ],
-                            "lens": {
-                                "projection": packet.msg.lens.projection,
-                                "focal_length": packet.msg.lens.focal_length,
-                                "centre": [0, 0],
-                                "fov": packet.msg.lens.fov,
-                            },
+                            "timestamp": time,
                         },
                         f,
                         indent=4,
