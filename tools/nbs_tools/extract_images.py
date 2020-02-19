@@ -55,7 +55,7 @@ def run(files, output, **kwargs):
                 filename = os.path.join(output, "{:05d}.jpg".format(count))
 
 
-                time = int(packet.msg.timestamp.seconds * 1e9 + packet.msg.timestamp.nanos)
+                time = packet.msg.timestamp.seconds + packet.msg.timestamp.nanos / 1e9
                 cv2.imwrite(filename, img)
 
                 filename = os.path.join(output, "{:05d}.json".format(count))
